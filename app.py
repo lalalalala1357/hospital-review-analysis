@@ -19,9 +19,7 @@ import random
 import string
 import io
 
-from transformers import AutoTokenizer, AutoModelForSequenceClassification
-import torch
-import numpy as np
+from snownlp import SnowNLP
 import re
 from webdriver_manager.chrome import ChromeDriverManager
 
@@ -105,10 +103,6 @@ def ensure_schema():
         c.execute("CREATE INDEX IF NOT EXISTS idx_reviews_sentiment ON reviews(analyzed_sentiment)")
         conn.commit()
 
-# 模型初始化
-model_name = "uer/roberta-base-finetuned-jd-binary-chinese"
-tokenizer = AutoTokenizer.from_pretrained(model_name)
-model = AutoModelForSequenceClassification.from_pretrained(model_name)
 
 # 清理舊程序 (Mac/Linux)
 os.system("pkill -f chromedriver")
@@ -410,7 +404,7 @@ def scrape_google_reviews(hospital_name, max_reviews=30):
 # 爬蟲函式結束，以下原功能不變
 # ==========================================
 
-# ✅ 情感分析
+# ✅ 情感分析 (輕量化 SnowNLP 版)
 def analyze_reviews(reviews):
     sentiments = []
     pos_count = 0
@@ -420,21 +414,24 @@ def analyze_reviews(reviews):
         text = review['text']
         r_time = review.get('time', 'Unknown') 
 
-        inputs = tokenizer(text, return_tensors="pt", truncation=True, max_length=512)
-        with torch.no_grad():
-            outputs = model(**inputs)
-        logits = outputs.logits
-        probs = torch.softmax(logits, dim=-1).numpy()[0]
-        pred_label = np.argmax(probs)
-        score = round(np.max(probs) * 100, 2)
+        # 使用 SnowNLP 進行分析
+        try:
+            s = SnowNLP(text)
+            prob = s.sentiments # 範圍 0~1，越接近 1 越正向
+        except:
+            prob = 0.5 # 如果分析失敗給中立分
 
-        sentiment = "POSITIVE" if pred_label == 1 else "NEGATIVE"
-        emotion = sentiment 
+        score = round(prob * 100, 2)
 
-        if sentiment == "POSITIVE":
+        # 定義：大於 0.6 算正面，其他算負面 (SnowNLP 比較嚴格，門檻可自己調)
+        if prob > 0.6:
+            sentiment = "POSITIVE"
             pos_count += 1
         else:
+            sentiment = "NEGATIVE"
             neg_count += 1
+
+        emotion = sentiment 
 
         sentiments.append({
             'text': text,

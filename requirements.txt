@@ -4,9 +4,7 @@ Flask-Bcrypt
 selenium
 webdriver-manager
 pandas
-transformers
-torch
 captcha
 requests
 gunicorn
-numpy
+snownlp
