@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <title>醫院評論分析｜首頁</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    body {
+      margin: 0;
+      font-family: "Noto Sans TC", sans-serif;
+      background: linear-gradient(180deg, #0b1220, #0e1525);
+      color: #e5e7eb;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+    }
+    .wrap { max-width: 900px; padding: 20px; text-align: center; }
+    h1 { font-size: 28px; margin-bottom: 20px; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 20px; }
+    .card {
+      background: linear-gradient(180deg, #111827, #0b1020);
+      border: 1px solid #1f2937;
+      border-radius: 16px;
+      padding: 24px;
+      cursor: pointer;
+      text-decoration: none;
+      color: inherit;
+      transition: transform .15s ease, border-color .15s ease, box-shadow .15s ease;
+    }
+    .card:hover { transform: translateY(-4px); border-color: #334155; box-shadow: 0 8px 20px rgba(0,0,0,.35); }
+    .title { font-size: 20px; margin-bottom: 10px; }
+    .desc { color: #9ca3af; line-height: 1.6; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>請選擇要使用的功能</h1>
+    <div class="grid">
+      <!-- 搜尋模式 -->
+      <a class="card" href="{{ url_for('google_page') }}">
+        <div class="title">🔎 輸入醫院名稱搜尋</div>
+        <div class="desc">直接輸入醫院名稱，系統會用爬蟲抓取 Google Maps 評論並進行情緒分析。</div>
+      </a>
+
+      <!-- 地區模式（入口） -->
+      <a class="card" href="{{ url_for('region') }}">
+        <div class="title">🗺️ 依地區分類選擇</div>
+        <div class="desc">先選北/中/南/東，再從清單挑選醫院後進行情緒分析。</div>
+      </a>
+    </div>
+  </div>
+</body>
+</html>
+

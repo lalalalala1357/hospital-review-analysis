@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <title>Google maps 醫院評論分析</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <!-- 載入 Chart.js 與百分比外掛 -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels"></script>
+</head>
+<body>
+  {% include 'navbar.html' %}
+
+  <h2 style="text-align:center; margin:20px 0;">Google maps 醫院評論分析</h2>
+
+  <form action="{{ url_for('analyze') }}" method="POST" style="text-align:center; margin-bottom:20px;">
+    <input type="text" name="hospital" placeholder="輸入醫院名稱"
+           value="{{ request.args.get('hospital','') }}" required>
+    <button type="submit">分析</button>
+  </form>
+
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      {% for category, message in messages %}
+        {% if category == 'analyze_error' %}
+          <div class="alert alert-danger">❌ {{ message }}</div>
+        {% elif category == 'analyze_success' %}
+          <div class="alert alert-success">✅ {{ message }}</div>
+        {% else %}
+          <div class="alert">{{ message }}</div>
+        {% endif %}
+      {% endfor %}
+    {% endif %}
+  {% endwith %}
+
+  {% if hospital %}
+    <div class="summary">
+      <div class="meta-lines">
+        <b>醫院名稱：{{ hospital }}</b>
+        <div class="meta-line"><span class="check">✅</span>正面評論：{{ pos }} 則</div>
+        <div class="meta-line"><span class="cross">❌</span>負面評論：{{ neg }} 則</div>
+      </div>
+      <div class="chart-box" id="chart-area">
+        <!-- ✅ 圓餅圖畫布 -->
+        <canvas id="sentimentChart" width="300" height="300"></canvas>
+      </div>
+    </div>
+
+    {% for r in sentiments %}
+      <div class="review-box {{ r.label }}">
+        <div class="label">
+            [{{ r.label }}] 信心分數：{{ r.score }}% 
+            <span style="float:right; font-size:0.9em; color:#666;">{{ r.time }}</span>
+        </div>
+        <div class="content">{{ r.text }}</div>
+      </div>
+    {% endfor %}
+
+    <!-- ✅ Chart.js 程式碼 -->
+    <script>
+      const posCount = {{ pos|default(0) }};
+      const negCount = {{ neg|default(0) }};
+      const total = posCount + negCount;
+
+      const ctx = document.getElementById('sentimentChart').getContext('2d');
+      new Chart(ctx, {
+        type: 'pie',
+        data: {
+          labels: ['正面', '負面'],
+          datasets: [{
+            data: [posCount, negCount],
+            backgroundColor: ['#36a2eb', '#ff6384']
+          }]
+        },
+        options: {
+          plugins: {
+            legend: { position: 'bottom' },
+            title: { display: true, text: '評論情緒分佈' },
+            datalabels: {
+              color: '#fff',
+              formatter: (value) => {
+                if (total === 0) return "0%";
+                let percentage = (value / total * 100).toFixed(1) + "%";
+                return percentage;
+              }
+            }
+          }
+        },
+        plugins: [ChartDataLabels]  // ✅ 啟用百分比外掛
+      });
+    </script>
+  {% endif %}
+</body>
+</html>

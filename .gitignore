@@ -1,0 +1,22 @@
+# 忽略 Python 編譯檔 (垃圾檔)
+__pycache__/
+*.py[cod]
+
+# 忽略虛擬環境
+venv/
+env/
+.env
+
+# 忽略資料庫 (保護資料，且 DB 檔案不適合上傳)
+*.db
+*.sqlite3
+
+# 忽略 Mac/Windows 系統縮圖檔
+.DS_Store
+Thumbs.db
+
+# 忽略 VS Code 設定檔
+.vscode/
+
+# 忽略 AI 模型下載快取
+cache/

@@ -1,0 +1,42 @@
+<!-- templates/navbar.html -->
+<nav class="navbar">
+  <div class="brand">🏥 醫院評論分析</div>
+  <div class="nav-links">
+    <a href="{{ url_for('index') }}" class="nav-link">首頁</a>
+    <a href="{{ url_for('logout') }}" class="nav-link">登出</a>
+  </div>
+</nav>
+
+<style>
+  .navbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 20px;
+    background: #121727;
+    border-bottom: 1px solid #2a3350;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  .brand {
+    font-weight: 600;
+    font-size: 18px;
+    color: #f1f1f1;
+  }
+  .nav-links {
+    display: flex;
+    gap: 12px;
+  }
+  .nav-link {
+    color: #f1f1f1;
+    text-decoration: none;
+    font-size: 16px;
+    padding: 6px 12px;
+    border-radius: 6px;
+    transition: 0.2s;
+  }
+  .nav-link:hover {
+    background: #1e293b;
+  }
+</style>

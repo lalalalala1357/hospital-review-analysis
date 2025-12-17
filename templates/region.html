@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <title>依地區分類 - 醫院評論分析</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  {% include 'navbar.html' %}
+
+  <div class="container">
+    <h2 style="text-align:center; margin:0 0 16px;">依地區分類選擇醫院</h2>
+
+    <form method="POST" action="{{ url_for('region') }}" class="form-row full">
+      <label for="region" style="display:block; margin:8px 0;">選擇地區：</label>
+      <select id="region" name="region" required>
+        <option value="">-- 請選擇 --</option>
+        <option value="north"  {{ 'selected' if selected_region=='north'  else '' }}>北部</option>
+        <option value="central"{{ 'selected' if selected_region=='central'else '' }}>中部</option>
+        <option value="south"  {{ 'selected' if selected_region=='south'  else '' }}>南部</option>
+        <option value="east"   {{ 'selected' if selected_region=='east'   else '' }}>東部</option>
+      </select>
+      <div style="margin-top:10px;">
+        <button type="submit">查看</button>
+      </div>
+    </form>
+
+    {% if selected_region %}
+      <div class="result">
+        你選擇的地區是：
+        <span class="tag">
+          {{ '北部' if selected_region=='north'
+             else '中部' if selected_region=='central'
+             else '南部' if selected_region=='south'
+             else '東部' }}
+        </span>
+      </div>
+
+      {% if hospitals and hospitals|length > 0 %}
+        <div class="result" style="margin-top:12px;">
+          <h3 style="margin:8px 0;">醫院清單（點名稱即可前往分析）：</h3>
+          <table class="table">
+            <thead>
+              <tr><th>名稱</th><th>地址</th></tr>
+            </thead>
+            <tbody>
+              {% for h in hospitals %}
+              <tr>
+                <td>
+                  <a class="hlink" href="{{ url_for('google_page') }}?hospital={{ h.name | urlencode }}">
+                    {{ h.name }}
+                  </a>
+                </td>
+                <td style="color:var(--muted);">{{ h.address }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% else %}
+        <div class="result" style="margin-top:12px;">
+          這個地區目前沒有可顯示的醫院（或地址無法判斷區域）。
+        </div>
+      {% endif %}
+    {% endif %}
+  </div>
+</body>
+</html>

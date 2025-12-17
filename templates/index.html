@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8" />
+  <title>醫院評論分析｜首頁</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <!-- 只用共用樣式，避免和其他頁不一致 -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <style>
+    /* 首頁專用的少量樣式（不覆蓋 navbar） */
+    .wrap { max-width:960px; margin:40px auto; padding:0 16px; }
+    .choices { display:grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap:16px; margin-top:16px; }
+    .choice {
+      display:block; padding:20px; border:1px solid var(--border); border-radius:16px;
+      background:linear-gradient(180deg, #0f172a, #0b1020);
+      cursor:pointer; transition:transform .12s, border-color .12s, box-shadow .12s;
+    }
+    .choice:hover { transform:translateY(-2px); border-color:#334155; box-shadow:0 8px 20px rgba(0,0,0,.32); }
+    .choice h3 { margin:6px 0 8px; font-size:20px; }
+    .choice p { margin:0; color:var(--muted); line-height:1.6; }
+    .choice.selected { outline:2px solid #4f46e5; border-color:#6366f1; }
+    .actions { margin-top:22px; display:flex; gap:12px; align-items:center; }
+    .hint { color:#9fb2d6; font-size:13px; }
+  </style>
+</head>
+<body>
+  {% include 'navbar.html' %}
+
+  <div class="wrap" role="main">
+    <h1 style="margin:0 0 10px;">開始前，先選擇你的方式</h1>
+    <p style="color:var(--muted); margin:0 0 20px;">「搜尋」與「地區分類」是同等級的入口，<b>二選一</b> 再開始找醫院。</p>
+
+    <!-- 二選一 -->
+    <div class="choices" id="choices">
+      <label class="choice" data-mode="name" id="opt-name">
+        <input type="radio" name="mode" value="name" class="radio" hidden />
+        <h3>🔎 輸入醫院名稱搜尋</h3>
+        <p>我已經有目標醫院。直接輸入名稱，系統會爬取 Google Maps 評論並進行情緒分析。</p>
+      </label>
+
+      <label class="choice" data-mode="region" id="opt-region">
+        <input type="radio" name="mode" value="region" class="radio" hidden />
+        <h3>🗺️ 依地區分類選擇</h3>
+        <p>我還沒決定醫院。先選北 / 中 / 南 / 東，再從清單挑醫院後開始分析。</p>
+      </label>
+    </div>
+
+    <div class="actions">
+      <button class="btn primary" id="next">下一步</button>
+      <span class="hint">快捷鍵：<b>S</b> 選搜尋、<b>R</b> 選地區、<b>Enter</b> 前往</span>
+    </div>
+
+    <div class="result" style="margin-top:18px;">
+      小提醒：選好其中一個後才會前往對應頁面，不會同時顯示兩種介面。
+    </div>
+  </div>
+
+  <script>
+    const choices = document.getElementById('choices');
+    const nextBtn = document.getElementById('next');
+    let selected = null;
+
+    function updateSelected(newMode) {
+      selected = newMode;
+      document.querySelectorAll('.choice').forEach(c => c.classList.remove('selected'));
+      if (newMode) document.querySelector(`.choice[data-mode="${newMode}"]`).classList.add('selected');
+    }
+
+    choices.addEventListener('click', (e) => {
+      const card = e.target.closest('.choice');
+      if (!card) return;
+      updateSelected(card.getAttribute('data-mode'));
+    });
+
+    nextBtn.addEventListener('click', () => {
+      if (!selected) { alert('請先選擇「輸入搜尋」或「依地區分類」。'); return; }
+      if (selected === 'name') {
+        window.location.href = "{{ url_for('google_page') }}";
+      } else {
+        window.location.href = "{{ url_for('region') }}";
+      }
+    });
+
+    window.addEventListener('keydown', (e) => {
+      if (['input','textarea'].includes((e.target.tagName || '').toLowerCase())) return;
+      const k = e.key.toLowerCase();
+      if (k === 's') updateSelected('name');
+      if (k === 'r') updateSelected('region');
+      if (k === 'enter') nextBtn.click();
+    });
+  </script>
+</body>
+</html>

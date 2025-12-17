@@ -1,0 +1,118 @@
+/* ====== 全站基底 ====== */
+:root{
+    --bg:#0b1020; --panel:#1c2233; --panel-2:#121727; --border:#2a3350;
+    --text:#f1f1f1; --muted:#9fb2d6; --brand:#1e90ff; --brand-2:#0d6efd;
+  }
+  *{ box-sizing:border-box; }
+  html,body{ margin:0; padding:0; }
+  body{
+    font-family: ui-sans-serif, system-ui, -apple-system, "Noto Sans TC", Arial;
+    background: linear-gradient(180deg, var(--bg), #0e1525);
+    color: var(--text);
+  }
+  
+  /* ====== 導覽列 (共用) ====== */
+  .navbar{
+    display:flex; justify-content:space-between; align-items:center;
+    padding:12px 18px;
+    border-bottom:1px solid #1f2937;
+    background:linear-gradient(180deg,#0f172a,#0b1020);
+    position:sticky; top:0; z-index:100;
+  }
+  .navbar .brand{
+    font-weight:600; letter-spacing:.3px; font-size:18px; color:var(--text);
+  }
+  .navbar .navlinks{ display:flex; gap:12px; }
+  .navbar .navlinks a{
+    color:#e5e7eb; text-decoration:none;
+    padding:8px 10px; border:1px solid #334155; border-radius:10px;
+    transition: .15s ease;
+    font-size:14px;
+  }
+  .navbar .navlinks a:hover{ border-color:#64748b; background:#1e293b; }
+  
+  /* ====== 版面容器 ====== */
+  .container{
+    max-width: 960px;
+    margin: 40px auto;
+    padding: 20px;
+    background: var(--panel);
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+  }
+  
+  /* ====== 表單元件 ====== */
+  .form-row{ display:flex; gap:10px; align-items:center; }
+  .form-row.full{ display:block; }
+  
+  select, input[type="text"]{
+    width:100%;
+    padding:10px 12px;
+    border-radius:8px;
+    border:1px solid #444;
+    background:#0b1020;
+    color:var(--text);
+    font-size:16px;
+  }
+  button, .btn{
+    padding:10px 16px;
+    border-radius:8px;
+    border:none;
+    background:var(--brand);
+    color:#fff;
+    cursor:pointer;
+    font-size:16px;
+  }
+  button:hover, .btn:hover{ background:var(--brand-2); }
+  
+  /* ====== 卡片 / 區塊 ====== */
+  .result{
+    margin-top:16px; padding:14px;
+    background: var(--panel-2);
+    border-radius:10px; border:1px solid var(--border);
+  }
+  .tag{
+    display:inline-block; padding:4px 10px;
+    border-radius:999px; background:var(--border);
+  }
+  
+  /* ====== 表格 ====== */
+  .table{ width:100%; border-collapse: collapse; margin-top:10px; }
+  .table th, .table td{ padding:12px; text-align:left; }
+  .table thead tr{ border-bottom:1px solid var(--border); color:#a8c7ff; }
+  .table tbody tr{ border-bottom:1px solid #222a44; }
+  .table a.hlink{ color:#a8c7ff; text-decoration:none; }
+  .table a.hlink:hover{ text-decoration:underline; }
+  
+  /* ====== Google 分析專用 ====== */
+  .summary{
+    margin:16px auto; max-width: 960px;
+    background: linear-gradient(180deg, #1a1f36, #0b1020);
+    border: 1px solid #333; border-radius: 14px; padding: 16px;
+    display:grid; grid-template-columns: 1fr 220px; gap:16px; align-items:center;
+  }
+  .meta-lines b{ font-size:18px; display:block; margin-bottom:8px; }
+  .meta-line{ margin:4px 0; font-size:16px; }
+  .check{ color:#00cc66; margin-right:4px; }
+  .cross{ color:#ff4444; margin-right:4px; }
+  .chart-box{
+    width: 200px; height: 200px; border-radius: 50%;
+    background:#222; display:flex; align-items:center; justify-content:center;
+    color:#aaa; font-size:14px; text-align:center;
+  }
+  
+  /* 評論卡片 */
+  .review-box{
+    border: 1px solid #333; padding: 14px; margin: 12px auto;
+    border-radius: 8px; max-width: 960px; color:#000; font-size:15px;
+  }
+  .POSITIVE{ background:#e0f8e9; }
+  .NEGATIVE{ background:#ffe6e6; }
+  .NEUTRAL{  background:#f1f1f1; }
+  .review-box .label{ font-weight:700; margin-bottom:6px; }
+  
+  /* Flash 訊息（可選） */
+  .alert{ max-width:960px; margin:10px auto; padding:10px 12px; border-radius:8px; }
+  .alert-success{ background:#0f2a1b; color:#a6f3c3; border:1px solid #164a31; }
+  .alert-danger{  background:#2a0f11; color:#ffb3b3; border:1px solid #4a1616; }
+  
