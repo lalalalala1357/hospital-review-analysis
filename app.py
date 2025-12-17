@@ -587,7 +587,8 @@ def init_admin_user(bcrypt):
             c.execute("INSERT INTO users (username, password) VALUES (?, ?)", ('admin', hashed_pw))
             print("✅ 已建立預設管理員 (帳號: admin / 密碼: 123456)")
 
+ensure_schema()
+init_admin_user(bcrypt)
+
 if __name__ == '__main__':
-    ensure_schema()
-    init_admin_user(bcrypt)
     app.run(host='0.0.0.0',debug=True,port=5003)
