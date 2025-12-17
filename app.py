@@ -4,7 +4,6 @@ from flask_bcrypt import Bcrypt
 import sqlite3
 import os
 import pandas as pd
-from transformers import pipeline
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
@@ -103,10 +102,6 @@ def ensure_schema():
         c.execute("CREATE INDEX IF NOT EXISTS idx_reviews_sentiment ON reviews(analyzed_sentiment)")
         conn.commit()
 
-
-# 清理舊程序 (Mac/Linux)
-os.system("pkill -f chromedriver")
-os.system("pkill -f flask")
 
 print("資料庫位置：", os.path.abspath("hospital_reviews.db"))
 
