@@ -30,6 +30,7 @@ future @ file:///AppleInternal/Library/BuildRoots/2c89a47b-9dd5-11ef-938f-6e654a
 fuzzywuzzy==0.18.0
 gitdb==4.0.12
 GitPython==3.1.44
+gunicorn==23.0.0
 h11==0.16.0
 hf-xet==1.1.5
 huggingface-hub==0.34.1

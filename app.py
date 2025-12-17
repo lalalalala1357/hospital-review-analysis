@@ -192,6 +192,20 @@ def scrape_google_reviews(hospital_name, max_reviews=30):
     # 1. 設定 Chrome 選項
     # -------------------------------------------
     options = webdriver.ChromeOptions()
+    
+    # 判斷是否在 Render 雲端環境 (Render 會自動提供這個環境變數)
+    if os.environ.get('RENDER'):
+        print("☁️ 偵測到雲端環境，啟動 Headless 模式...")
+        options.binary_location = "/opt/render/project/.render/chrome/opt/google/chrome/chrome"
+        options.add_argument("--headless=new") # 無頭模式 (無螢幕)
+        options.add_argument("--disable-dev-shm-usage")
+        options.add_argument("--no-sandbox")
+    else:
+        print("💻 偵測到本機環境，啟動一般模式...")
+        # 在本機測試時，保持原本的設定，不用 headless
+        options.add_argument("--start-maximized")
+    
+    
     options.add_experimental_option("excludeSwitches", ["enable-automation"])
     options.add_experimental_option('useAutomationExtension', False)
     options.add_argument("--disable-blink-features=AutomationControlled")
