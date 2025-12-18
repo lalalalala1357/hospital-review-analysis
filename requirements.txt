@@ -1,10 +1,9 @@
-Flask
-Flask-Login
-Flask-Bcrypt
+flask
+flask-login
+flask-bcrypt
+pandas
 selenium
 webdriver-manager
-pandas
-captcha
-requests
-gunicorn
 snownlp
+captcha
+gunicorn
