@@ -175,225 +175,98 @@ def load_user(user_id):
 
 
 def scrape_google_reviews(hospital_name, max_reviews=30):
-    print(f"🚀 開始爬取：{hospital_name}")
+    print(f"🚀 開始爬取：{hospital_name} (內存優化模式)")
     
-    # -------------------------------------------
-    # 1. 設定 Chrome 選項
-    # -------------------------------------------
     options = webdriver.ChromeOptions()
     
-    # 判斷是否在 Render 雲端環境 (Render 會自動提供這個環境變數)
-    if os.environ.get('RENDER'):
-        print("☁️ 偵測到雲端環境，啟動 Headless 模式...")
-        options.binary_location = "/opt/render/project/.render/chrome/opt/google/chrome/chrome"
-        options.add_argument("--headless=new") # 無頭模式 (無螢幕)
-        options.add_argument("--disable-dev-shm-usage")
-        options.add_argument("--no-sandbox")
-    else:
-        print("💻 偵測到本機環境，啟動一般模式...")
-        # 在本機測試時，保持原本的設定，不用 headless
-        options.add_argument("--start-maximized")
-    
-    
-    options.add_experimental_option("excludeSwitches", ["enable-automation"])
-    options.add_experimental_option('useAutomationExtension', False)
-    options.add_argument("--disable-blink-features=AutomationControlled")
-    options.add_argument("--lang=zh-TW") # 強制繁體中文
-    options.add_argument("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
-    options.add_argument("--disable-gpu")
+    # --- 1. 極限內存優化參數 ---
+    options.add_argument("--headless=new") 
     options.add_argument("--no-sandbox")
-    options.add_argument("--start-maximized")
+    options.add_argument("--disable-dev-shm-usage") # 核心：解決容器內存不足
+    options.add_argument("--disable-gpu")
+    options.add_argument("--disable-extensions")
+    options.add_argument("--disable-infobars")
+    options.add_argument("--blink-settings=imagesEnabled=false") # 禁用圖片：省下約 30% 內存
     options.add_argument("--incognito") 
+    options.add_argument("--single-process") # 減少進程開銷
+    options.add_argument("window-size=1200,800")
+    
+    # 雲端環境特定路徑設定
+    if os.environ.get('RENDER'):
+        options.binary_location = "/opt/render/project/.render/chrome/opt/google/chrome/chrome"
 
-    driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
-    wait = WebDriverWait(driver, 15)
-
+    # 使用 Context Manager 思維，確保 driver 一定會被關閉
+    driver = None
     try:
+        driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
+        wait = WebDriverWait(driver, 10) # 縮短等待時間，減少佔用
+
         # 2. 前往 Google Maps
-        driver.get("https://www.google.com.tw/maps?hl=zh-TW")
-        
-        # 3. 搜尋地點
-        search_box = wait.until(EC.presence_of_element_located((By.ID, "searchboxinput")))
-        search_box.clear()
-        search_box.send_keys(hospital_name)
-        search_box.send_keys(Keys.RETURN)
-        print("✅ 已輸入並搜尋")
+        driver.get(f"https://www.google.com.tw/maps/search/{hospital_name}?hl=zh-TW")
+        time.sleep(2)
 
-        # ---------------------------------------------------------
-        # 4. 進入評論區 (多重策略)
-        # ---------------------------------------------------------
-        print("🔍 嘗試進入評論列表...")
-        time.sleep(3) 
-
-        entered_reviews = False
-
-        # 策略 A: 點擊「總評論數」或「星級」
-        if not entered_reviews:
-            try:
-                review_count_btn = wait.until(EC.element_to_be_clickable(
-                    (By.XPATH, "//button[contains(@aria-label, '評論') and contains(@jsaction, 'pane.rating')]")
-                ))
-                review_count_btn.click()
-                entered_reviews = True
-                print("✅ 成功點擊評分按鈕進入列表")
-            except:
-                pass
-
-        # 策略 B: 找 Tab
-        if not entered_reviews:
-            try:
-                review_tab = driver.find_element(By.XPATH, "//button[contains(@aria-label, '評論') and @role='tab']")
-                review_tab.click()
-                entered_reviews = True
-                print("✅ 成功點擊評論分頁")
-            except:
-                pass
-
-        # 策略 C: 點擊第一個搜尋結果
-        if not entered_reviews:
-            try:
-                print("⚠️ 找不到入口，嘗試點擊搜尋結果第一項...")
-                first_result = wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, "a[href*='/maps/place']")))
-                first_result.click()
-                time.sleep(3)
-                review_count_btn = wait.until(EC.element_to_be_clickable(
-                    (By.XPATH, "//button[contains(@aria-label, '評論') and contains(@jsaction, 'pane.rating')]")
-                ))
-                review_count_btn.click()
-                entered_reviews = True
-                print("✅ 進入詳細頁後成功開啟評論")
-            except Exception as e:
-                print("❌ 無法進入評論區")
-                driver.quit()
-                return []
-        
-        time.sleep(3)
-
-        # 5. 排序：切換為「最新」
+        # 3. 嘗試進入評論區
+        print("🔍 尋找評論入口...")
         try:
-            sort_btn = wait.until(EC.element_to_be_clickable(
-                (By.XPATH, "//button[contains(@aria-label, '排序') or contains(@data-value, 'Sort')]")
-            ))
+            # 直接嘗試點擊帶有「評論」文字的按鈕
+            review_btn = wait.until(EC.element_to_be_clickable((By.XPATH, "//button[contains(@aria-label, '評論')]")))
+            review_btn.click()
+            time.sleep(2)
+        except Exception:
+            print("⚠️ 找不到評論按鈕，嘗試備用策略...")
+
+        # 4. 排序：最新
+        try:
+            sort_btn = wait.until(EC.element_to_be_clickable((By.XPATH, "//button[contains(@aria-label, '排序')]")))
             sort_btn.click()
             time.sleep(1)
-            newest_btn = wait.until(EC.element_to_be_clickable(
-                (By.XPATH, "//div[contains(@aria-label, '最新') or contains(text(), '最新')]")
-            ))
+            newest_btn = wait.until(EC.element_to_be_clickable((By.XPATH, "//div[@role='menuitem' and contains(., '最新')]")))
             newest_btn.click()
-            print("✅ 已切換為最新排序")
-            time.sleep(3)
+            time.sleep(2)
         except:
-            print("⚠️ 無法排序 (可能已是最新)，繼續抓取")
+            pass
 
-        # ---------------------------------------------------------
-        # 6. 【修正版】定位捲動容器 (改用 role='feed')
-        # ---------------------------------------------------------
-        print("🔍 定位捲動區域...")
-        scrollable_div = None
-        try:
-            # 最新版 Google Maps 的評論列表都有 role="feed" 屬性
-            scrollable_div = driver.find_element(By.CSS_SELECTOR, "div[role='feed']")
-            print("✅ 成功鎖定捲動容器 (div[role='feed'])")
-        except:
-            print("⚠️ 找不到 role='feed'，嘗試使用舊版 class 定位...")
-            try:
-                scrollable_div = driver.find_element(By.CSS_SELECTOR, "div.m6QErb.DxyBCb.kA9KIf.dS8AEf")
-            except:
-                print("⚠️ 找不到特定捲動容器，將嘗試捲動整個頁面。")
-
-        # ---------------------------------------------------------
-        # 7. 【修正版】強力捲動抓取
-        # ---------------------------------------------------------
+        # 5. 滾動與抓取 (優化滾動邏輯，減少 DOM 元素堆積)
         reviews_data = []
         unique_ids = set()
-        scroll_attempts = 0
-        last_height = 0
         
-        if scrollable_div:
-            last_height = driver.execute_script("return arguments[0].scrollHeight", scrollable_div)
-
-        while len(reviews_data) < max_reviews and scroll_attempts < 50:
-            # 動作 A: 使用 JS 捲動容器
-            if scrollable_div:
-                driver.execute_script('arguments[0].scrollTop = arguments[0].scrollHeight', scrollable_div)
-            else:
-                # 動作 B: 捲動整個 Body (備用方案)
-                driver.find_element(By.TAG_NAME, "body").send_keys(Keys.END)
-
-            time.sleep(2) # 等待載入
-
-            # 抓取目前所有看得到的評論區塊
-            all_reviews = driver.find_elements(By.CSS_SELECTOR, 'div[data-review-id]')
-            
-            for r in all_reviews:
-                try:
-                    rid = r.get_attribute("data-review-id")
-                    if rid in unique_ids: continue
-                    
-                    # 展開全文
-                    try:
-                        btn = r.find_element(By.TAG_NAME, "button")
-                        if "全文" in btn.text or "更多" in btn.get_attribute("aria-label"):
-                            driver.execute_script("arguments[0].click();", btn)
-                    except: pass
-
-                    # 抓文字
-                    text = ""
-                    try:
-                        text = r.find_element(By.CSS_SELECTOR, ".wiI7pd").text.strip()
-                    except:
-                        try:
-                            # 備用: 抓 span
-                            spans = r.find_elements(By.TAG_NAME, "span")
-                            for s in spans:
-                                if len(s.text) > 5 and s.text != "翻譯":
-                                    text = s.text
-                                    break
-                        except: pass
-                    
-                    # 抓時間
-                    r_time = "Unknown"
-                    try:
-                        time_els = r.find_elements(By.XPATH, ".//span[contains(text(), '前') or contains(text(), 'ago')]")
-                        for t in time_els:
-                            if len(t.text) < 15:
-                                r_time = t.text
-                                break
-                    except: pass
-
-                    if text:
-                        clean_text = remove_emojis(text)
-                        if clean_text:
-                            reviews_data.append({'text': clean_text, 'time': r_time})
-                            unique_ids.add(rid)
-                            print(f"  -> ({len(reviews_data)}/{max_reviews}) 抓取: {clean_text[:10]}...")
-
-                    if len(reviews_data) >= max_reviews: break
-
-                except: continue
+        for _ in range(15): # 限制最大滾動次數
+            if len(reviews_data) >= max_reviews:
+                break
                 
-            if len(reviews_data) >= max_reviews: 
-                print(f"✅ 已達到目標數量 ({len(reviews_data)} 筆)")
+            # 抓取當前頁面的評論塊
+            containers = driver.find_elements(By.CSS_SELECTOR, 'div[data-review-id]')
+            for r in containers:
+                rid = r.get_attribute("data-review-id")
+                if rid and rid not in unique_ids:
+                    try:
+                        # 僅抓取必要的文字
+                        text_el = r.find_element(By.CSS_SELECTOR, ".wiI7pd")
+                        text = remove_emojis(text_el.text.strip())
+                        if text:
+                            reviews_data.append({'text': text, 'time': '近期'})
+                            unique_ids.add(rid)
+                    except:
+                        continue
+                if len(reviews_data) >= max_reviews: break
+
+            # 滾動
+            try:
+                feed = driver.find_element(By.CSS_SELECTOR, "div[role='feed']")
+                driver.execute_script("arguments[0].scrollTop += 800", feed)
+                time.sleep(1)
+            except:
                 break
 
-            # 檢查是否滑不動了
-            if scrollable_div:
-                new_height = driver.execute_script("return arguments[0].scrollHeight", scrollable_div)
-                if new_height == last_height and scroll_attempts > 5:
-                    # 如果高度沒變，且嘗試超過5次，可能真的到底了
-                    pass
-                last_height = new_height
-            
-            scroll_attempts += 1
-
-        print(f"✅ 最終抓取 {len(reviews_data)} 筆")
-        driver.quit()
+        print(f"✅ 成功抓取 {len(reviews_data)} 筆")
         return reviews_data
 
     except Exception as e:
-        print(f"❌ 發生錯誤: {e}")
-        driver.quit()
+        print(f"❌ 爬蟲發生錯誤: {str(e)[:100]}")
         return []
+    finally:
+        if driver:
+            driver.quit() # ⚠️ 這是最重要的：強制關閉瀏覽器進程
 
 # ==========================================
 # 爬蟲函式結束，以下原功能不變
