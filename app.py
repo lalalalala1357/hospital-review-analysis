@@ -22,6 +22,9 @@ from snownlp import SnowNLP
 import re
 from webdriver_manager.chrome import ChromeDriverManager
 
+import threading
+scrape_lock = threading.Lock() # 建立一把鎖
+
 # ✅ 統一路徑設定
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 HR_DB = os.path.join(BASE_DIR, "hospital_reviews.db")
@@ -147,21 +150,50 @@ def get_captcha():
 def search_page():
     return render_template('search.html', username=session.get('username'))
 
+
+# 修改前 (您的原始寫法)
+# c.execute("SELECT id, name, address FROM hospitals ORDER BY name ASC")
+# rows = c.fetchall()
+# for hid, name, address in rows:
+#     if infer_region_from_address(address or "") == selected_region:
+#         ...
+
+# 修改後 (建議寫法：用 SQL Like 篩選)
 @app.route('/region', methods=['GET', 'POST'])
 @login_required
 def region():
     selected_region = None
     hospitals = []
+    
+    # 定義區域對應的關鍵字 (這樣就不用先把全部撈出來)
+    region_keywords = {
+        "north": ["台北", "臺北", "新北", "基隆", "桃園", "新竹", "宜蘭"],
+        "central": ["台中", "臺中", "苗栗", "彰化", "南投", "雲林"],
+        "south": ["台南", "臺南", "高雄", "嘉義", "屏東"],
+        "east": ["花蓮", "台東", "臺東"]
+    }
+
     if request.method == 'POST':
         selected_region = request.form.get('region')
-        with sqlite3.connect(HR_DB) as conn:
-            c = conn.cursor()
-            c.execute("SELECT id, name, address FROM hospitals ORDER BY name ASC")
-            rows = c.fetchall()
-        for hid, name, address in rows:
-            if infer_region_from_address(address or "") == selected_region:
-                hospitals.append({"id": hid, "name": name, "address": address or ""})
+        keywords = region_keywords.get(selected_region, [])
+        
+        if keywords:
+            # 動態建立 SQL 查詢： WHERE address LIKE '%台北%' OR address LIKE '%新北%' ...
+            query_conditions = " OR ".join([f"address LIKE '%{k}%'" for k in keywords])
+            sql = f"SELECT id, name, address FROM hospitals WHERE {query_conditions} ORDER BY name ASC"
+            
+            with sqlite3.connect(HR_DB) as conn:
+                c = conn.cursor()
+                c.execute(sql)
+                rows = c.fetchall() # 這裡 fetchall 只會抓出符合的幾筆，記憶體安全很多
+                
+                for hid, name, address in rows:
+                    hospitals.append({"id": hid, "name": name, "address": address or ""})
+                    
     return render_template('region.html', selected_region=selected_region, hospitals=hospitals)
+
+
+
 
 @login_manager.user_loader
 def load_user(user_id):
@@ -321,13 +353,23 @@ def google_page():
 def dashboard_page():
     return render_template('dashboard.html')
 
+
 @app.route('/analyze', methods=['POST'])
 @login_required
 def analyze():
-    hospital_name = request.form.get('hospital')
-    if not hospital_name:
-        flash("請輸入醫院名稱")
+    # 嘗試取得鎖，如果有人正在用，就直接拒絕，保護記憶體
+    if scrape_lock.locked():
+        flash("系統忙碌中，請稍後再試（目前有人正在使用分析功能）", "analyze_error")
         return redirect(url_for('google_page'))
+
+    with scrape_lock: # 這區塊內的程式碼，同一時間只能有一個人執行
+        hospital_name = request.form.get('hospital')
+        if not hospital_name:
+            flash("請輸入醫院名稱")
+            return redirect(url_for('google_page'))
+
+
+
 
     # 呼叫新的爬蟲函式
     reviews = scrape_google_reviews(hospital_name)
