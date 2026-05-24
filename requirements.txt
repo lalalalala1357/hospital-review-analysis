@@ -1,9 +1,0 @@
-flask
-flask-login
-flask-bcrypt
-pandas
-selenium
-webdriver-manager
-snownlp
-captcha
-gunicorn
