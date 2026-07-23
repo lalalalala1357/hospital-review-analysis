@@ -1,0 +1,499 @@
+<!DOCTYPE html>
+<!--
+==========================================
+⚔️ 醫院 PK 比較：兩家醫院評論、分數與 AI 建議比較
+==========================================
+-->
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <title>醫院比較 | 醫療口碑監測平台</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
+
+    <style>
+        body { background-color: #f4f7f6; font-family: "Segoe UI", "Microsoft JhengHei", sans-serif; }
+        .main-container { max-width: 1100px; margin: 40px auto; padding: 0 20px; }
+        
+        /* VS 圓圈效果 */
+        .vs-circle {
+            width: 60px; height: 60px;
+            background: #dc3545; color: white;
+            border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            font-weight: 900; font-style: italic; font-size: 1.5rem;
+            border: 4px solid white;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+            position: absolute;
+            left: 50%; top: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 10;
+        }
+
+        /* 比較卡片樣式 */
+        .pk-card {
+            background: white; border-radius: 16px; padding: 25px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05); height: 100%;
+            text-align: center; border-top: 6px solid #ccc;
+            transition: transform 0.3s ease;
+            position: relative;
+        }
+        .pk-card.left { border-top-color: #0066cc; }
+        .pk-card.right { border-top-color: #fd7e14; }
+
+        .score-box {
+            font-size: 4rem; font-weight: 800;
+            margin: 10px 0;
+            line-height: 1;
+        }
+        .score-left { color: #0066cc; }
+        .score-right { color: #fd7e14; }
+
+        .winner-badge {
+            background: #ffc107; color: #333;
+            padding: 5px 15px; border-radius: 20px;
+            font-weight: bold; font-size: 0.9rem;
+            display: inline-block; margin-bottom: 10px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+
+        .stat-label { color: #6c757d; font-size: 0.9rem; }
+        .stat-value { font-weight: 700; font-size: 1.25rem; }
+        .hospital-suggest-wrap { position: relative; }
+        .hospital-suggestion-panel {
+            position: absolute;
+            left: 0;
+            right: 0;
+            top: calc(100% + 8px);
+            z-index: 1050;
+            background: #fff;
+            border: 1px solid #dbe4ee;
+            border-radius: 14px;
+            box-shadow: 0 16px 40px rgba(15, 23, 42, 0.16);
+            padding: 8px;
+            max-height: 320px;
+            overflow-y: auto;
+            display: none;
+            text-align: left;
+        }
+        .hospital-suggestion-panel.show { display: block; }
+        .hospital-suggestion-item {
+            width: 100%;
+            border: 0;
+            background: transparent;
+            border-radius: 10px;
+            padding: 12px 14px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            color: #212529;
+            font-weight: 700;
+            text-align: left;
+            transition: background-color 0.15s ease, color 0.15s ease, transform 0.15s ease;
+        }
+        .hospital-suggestion-item i { color: #0066cc; width: 18px; text-align: center; }
+        .hospital-suggestion-item:hover,
+        .hospital-suggestion-item.active {
+            background: #eef6ff;
+            color: #0052a3;
+            transform: translateX(2px);
+        }
+        .hospital-suggestion-empty { padding: 14px; color: #6c757d; font-weight: 600; }
+    </style>
+</head>
+<body>
+
+{% include 'navbar.html' %}
+
+<div class="main-container">
+    
+    <div class="text-center mb-5">
+        <h2 class="fw-bold text-dark"><i class="fas fa-scale-balanced text-primary me-2"></i>醫院比較</h2>
+        <p class="text-muted">輸入兩家醫院名稱，系統將自動調閱 7 天內最新評價進行比較。</p>
+    </div>
+
+    {% if not h1 %}
+    <div class="card p-4 shadow-sm border-0 animate__animated animate__fadeIn">
+        <form action="/pk" method="POST" id="pkForm" onsubmit="handlePkSubmit(event)">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+            <div class="row g-4 align-items-center">
+                <div class="col-md-5 hospital-suggest-wrap">
+                    <div class="form-floating">
+                        <input type="text" name="hospital1" class="form-control" id="h1" 
+                               placeholder="醫院 A" autocomplete="off" required>
+                        <label for="h1">醫院 A (例如: 台大醫院)</label>
+                    </div>
+                    <div id="hospital-suggestions-a" class="hospital-suggestion-panel" role="listbox" aria-label="醫院 A 建議清單"></div>
+                </div>
+                
+                <div class="col-md-2 text-center position-relative">
+                    <span class="fw-bold fs-3 text-muted">VS</span>
+                </div>
+                
+                <div class="col-md-5 hospital-suggest-wrap">
+                    <div class="form-floating">
+                        <input type="text" name="hospital2" class="form-control" id="h2" 
+                               placeholder="醫院 B" autocomplete="off" required>
+                        <label for="h2">醫院 B (例如: 榮總醫院)</label>
+                    </div>
+                    <div id="hospital-suggestions-b" class="hospital-suggestion-panel" role="listbox" aria-label="醫院 B 建議清單"></div>
+                </div>
+                
+                <div class="col-md-6 mx-auto mt-4">
+                    <div class="form-floating">
+                        <select name="department" class="form-select fw-bold text-primary" id="deptSelect">
+                            <option value="">綜合評價 (不分科別)</option>
+                            <option value="牙科">🦷 牙科</option>
+                            <option value="眼科">👁️ 眼科</option>
+                            <option value="皮膚科">🧴 皮膚科</option>
+                            <option value="婦產科">🤰 婦產科</option>
+                            <option value="小兒科">👶 小兒科</option>
+                            <option value="骨科">🦴 骨科</option>
+                            <option value="急診">🚑 急診</option>
+                            <option value="心臟科">❤️ 心臟科</option>
+                            <option value="腸胃科">🩺 腸胃科</option>
+                            <option value="耳鼻喉科">👂 耳鼻喉科</option>
+                        </select>
+                        <label for="deptSelect">指定比較科別 (選填)</label>
+                    </div>
+                </div>
+
+                <div class="col-12 text-center mt-4">
+                    <button type="submit" class="btn btn-danger btn-lg px-5 rounded-pill shadow">
+                        <i class="fas fa-chart-simple me-2"></i>開始比較
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+    {% endif %}
+
+    {% if h1 and h2 %}
+    
+    <div id="pk-loading" class="text-center py-5 my-5">
+        <div class="spinner-border text-primary" style="width: 3rem; height: 3rem;" role="status">
+            <span class="visually-hidden">Loading...</span>
+        </div>
+        <h4 class="mt-3 text-muted fw-bold">正在產生比較分析...</h4>
+        <p class="text-muted">正在比對 {{ h1.name }} 與 {{ h2.name }}</p>
+    </div>
+
+    <div id="pk-result-section" style="opacity: 0; transition: opacity 0.5s ease-in;">
+        <div class="animate__animated animate__fadeInUp">
+            
+            {% if target_dept %}
+                <div class="text-center mb-4">
+                    <span class="badge bg-primary fs-6 px-4 py-2 rounded-pill shadow-sm">
+                        <i class="fas fa-stethoscope me-2"></i>本次比較科別：{{ target_dept }}
+                    </span>
+                </div>
+            {% endif %}
+
+            <div class="row g-4 position-relative">
+                <div class="vs-circle d-none d-md-flex">VS</div>
+
+                <div class="col-md-6">
+                    <div class="pk-card left">
+                        {% if h1.avg_score >= h2.avg_score %}
+                            <div class="winner-badge animate__animated animate__bounceIn">
+                                <i class="fas fa-crown me-1"></i>WINNER
+                            </div>
+                        {% endif %}
+                        <h3 class="fw-bold mb-3">{{ h1.name }}</h3>
+                        <div class="score-box score-left">{{ h1.avg_score }}</div>
+                        <p class="text-muted">平均滿意度 (0-10)</p>
+                        
+                        <div class="row mt-4">
+                            <div class="col-6 border-end">
+                                <div class="stat-value text-success">{{ h1.pos }}</div>
+                                <div class="stat-label">好評數</div>
+                            </div>
+                            <div class="col-6">
+                                <div class="stat-value text-danger">{{ h1.neg }}</div>
+                                <div class="stat-label">差評數</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-6">
+                    <div class="pk-card right">
+                        {% if h2.avg_score > h1.avg_score %}
+                            <div class="winner-badge animate__animated animate__bounceIn">
+                                <i class="fas fa-crown me-1"></i>WINNER
+                            </div>
+                        {% endif %}
+                        <h3 class="fw-bold mb-3">{{ h2.name }}</h3>
+                        <div class="score-box score-right">{{ h2.avg_score }}</div>
+                        <p class="text-muted">平均滿意度 (0-10)</p>
+
+                        <div class="row mt-4">
+                            <div class="col-6 border-end">
+                                <div class="stat-value text-success">{{ h2.pos }}</div>
+                                <div class="stat-label">好評數</div>
+                            </div>
+                            <div class="col-6">
+                                <div class="stat-value text-danger">{{ h2.neg }}</div>
+                                <div class="stat-label">差評數</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {% if ai_pk_summary %}
+            <div class="row mt-4 mb-2">
+                <div class="col-12 animate__animated animate__fadeInUp">
+                    {{ ai_pk_summary | safe }}
+                </div>
+            </div>
+            {% endif %}
+
+            <div class="card p-4 mt-4 shadow-sm border-0">
+                <h5 class="fw-bold mb-4 text-center"><i class="fas fa-chart-bar me-2"></i>各項數據對比 (最新 10 筆評價)</h5>
+                <div style="height: 350px;">
+                    <canvas id="pkChart"></canvas>
+                </div>
+            </div>
+
+            <div class="text-center mt-5">
+                <a href="/pk" class="btn btn-outline-secondary rounded-pill px-5">
+                    <i class="fas fa-redo me-2"></i> 重新比較
+                </a>
+            </div>
+
+            <script>
+                const ctx = document.getElementById('pkChart').getContext('2d');
+                new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: ['好評數量', '差評數量', '滿意度評分'],
+                        datasets: [
+                            {
+                                label: '{{ h1.name }}',
+                                data: [{{ h1.pos }}, {{ h1.neg }}, {{ h1.avg_score }}],
+                                backgroundColor: '#0066cc',
+                                borderColor: '#0052a3',
+                                borderWidth: 1,
+                                borderRadius: 8
+                            },
+                            {
+                                label: '{{ h2.name }}',
+                                data: [{{ h2.pos }}, {{ h2.neg }}, {{ h2.avg_score }}],
+                                backgroundColor: '#fd7e14',
+                                borderColor: '#e67300',
+                                borderWidth: 1,
+                                borderRadius: 8
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { position: 'bottom' },
+                            tooltip: { padding: 10 }
+                        },
+                        scales: {
+                            y: { 
+                                beginAtZero: true,
+                                grid: { color: '#f0f0f0' }
+                            },
+                            x: {
+                                grid: { display: false }
+                            }
+                        }
+                    }
+                });
+            </script>
+        </div>
+    </div> {% endif %}
+
+    <div class="mt-4">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+          {% if messages %}
+            {% for category, message in messages %}
+              <div class="alert alert-danger shadow-sm border-0 animate__animated animate__shakeX text-center">
+                  <i class="fas fa-exclamation-circle me-2"></i>{{ message }}
+              </div>
+            {% endfor %}
+          {% endif %}
+        {% endwith %}
+    </div>
+
+</div>
+
+<div id="loadingOverlay" class="d-none">
+    <div class="loading-content text-center">
+        <div class="spinner-border text-light mb-4" style="width: 4rem; height: 4rem;" role="status"></div>
+        <h3 class="text-white fw-bold mb-3">正在準備醫院比較...</h3>
+        <p id="loadingText" class="text-white-50 fs-5">系統正在從資料庫調閱資料...</p>
+        
+        <div class="progress mt-3" style="height: 6px; width: 300px; margin: 0 auto;">
+            <div class="progress-bar progress-bar-striped progress-bar-animated bg-danger" role="progressbar" style="width: 100%"></div>
+        </div>
+    </div>
+</div>
+
+<style>
+    #loadingOverlay {
+        position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
+        background: rgba(0,0,0,0.85); z-index: 9999; 
+        display: flex; justify-content: center; align-items: center; 
+        backdrop-filter: blur(5px); 
+    }
+    .loading-content { animation: fadeInUp 0.5s ease; }
+</style>
+
+<script>
+    // ==========================================
+    // ⚔️ PK 頁面互動：醫院建議清單、送出驗證與載入動畫
+    // ==========================================
+    const allHospitals = {{ all_hospitals | default([]) | tojson }};
+    function setupHospitalSuggestions(inputId, panelId) {
+        const input = document.getElementById(inputId);
+        const panel = document.getElementById(panelId);
+        let activeIndex = -1;
+        if (!input || !panel) return;
+
+        const hide = () => {
+            panel.classList.remove('show');
+            panel.innerHTML = '';
+            activeIndex = -1;
+        };
+
+        const choose = (name) => {
+            input.value = name;
+            hide();
+            input.focus();
+        };
+
+        const setActive = (items) => {
+            items.forEach((item, index) => item.classList.toggle('active', index === activeIndex));
+            items[activeIndex]?.scrollIntoView({ block: 'nearest' });
+        };
+
+        const render = () => {
+            const keyword = input.value.trim().toLowerCase();
+            panel.innerHTML = '';
+            activeIndex = -1;
+            if (!keyword) {
+                hide();
+                return;
+            }
+            const matches = allHospitals
+                .filter(name => String(name).toLowerCase().includes(keyword))
+                .slice(0, 20);
+
+            if (!matches.length) {
+                const empty = document.createElement('div');
+                empty.className = 'hospital-suggestion-empty';
+                empty.textContent = '沒有找到符合的醫院';
+                panel.appendChild(empty);
+                panel.classList.add('show');
+                return;
+            }
+
+            matches.forEach((name) => {
+                const button = document.createElement('button');
+                button.type = 'button';
+                button.className = 'hospital-suggestion-item';
+                button.setAttribute('role', 'option');
+                const icon = document.createElement('i');
+                icon.className = 'fas fa-hospital';
+                const text = document.createElement('span');
+                text.textContent = name;
+                button.append(icon, text);
+                button.addEventListener('mousedown', (event) => {
+                    event.preventDefault();
+                    choose(name);
+                });
+                panel.appendChild(button);
+            });
+            panel.classList.add('show');
+        };
+
+        input.addEventListener('input', render);
+        input.addEventListener('focus', render);
+        input.addEventListener('blur', () => setTimeout(hide, 120));
+        input.addEventListener('keydown', (event) => {
+            const items = Array.from(panel.querySelectorAll('.hospital-suggestion-item'));
+            if (!panel.classList.contains('show') || !items.length) return;
+            if (event.key === 'ArrowDown') {
+                event.preventDefault();
+                activeIndex = (activeIndex + 1) % items.length;
+                setActive(items);
+            } else if (event.key === 'ArrowUp') {
+                event.preventDefault();
+                activeIndex = (activeIndex - 1 + items.length) % items.length;
+                setActive(items);
+            } else if (event.key === 'Enter' && activeIndex >= 0) {
+                event.preventDefault();
+                items[activeIndex].dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
+            } else if (event.key === 'Escape') {
+                hide();
+            }
+        });
+    }
+    setupHospitalSuggestions('h1', 'hospital-suggestions-a');
+    setupHospitalSuggestions('h2', 'hospital-suggestions-b');
+
+    // 醫院比較的輪播文字
+    const pkLoadingMessages = [
+        "🚀 啟動資料庫快取檢測...",
+        "🔍 搜尋兩家醫院的近期評價...",
+        "🤖 AI 正在評估評論情緒...",
+        "⚖️ 正在計算兩院綜合滿意度...",
+        "📊 正在生成比較圖表..."
+    ];
+
+    // 處理送出表單的動作 (黑畫面)
+    function handlePkSubmit(event) {
+        event.preventDefault(); 
+        const h1 = document.getElementById('h1')?.value.trim();
+        const h2 = document.getElementById('h2')?.value.trim();
+        const normalizedHospitals = new Set(allHospitals.map(name => String(name).replace(/臺/g, '台').trim()));
+        if (!h1 || !h2 || !normalizedHospitals.has(h1.replace(/臺/g, '台')) || !normalizedHospitals.has(h2.replace(/臺/g, '台'))) {
+            alert('請從建議清單選擇兩家已收錄醫院，不要輸入科別或單字關鍵字。');
+            return false;
+        }
+        
+        const overlay = document.getElementById('loadingOverlay');
+        const textElement = document.getElementById('loadingText');
+        overlay.classList.remove('d-none');
+
+        let step = 0;
+        if (textElement) {
+            textElement.innerText = pkLoadingMessages[0];
+            setInterval(() => {
+                step = (step + 1) % pkLoadingMessages.length;
+                textElement.innerText = pkLoadingMessages[step];
+            }, 2000);
+        }
+
+        setTimeout(() => {
+            document.getElementById('pkForm').submit();
+        }, 100);
+    }
+
+    // 👉 處理結果畫面載入後的動畫 (藍色轉圈圈 0.8秒)
+    document.addEventListener("DOMContentLoaded", function() {
+        const loadingScreen = document.getElementById('pk-loading');
+        const resultSection = document.getElementById('pk-result-section');
+
+        // 如果畫面上存在 Loading 區塊，代表目前是有結果的狀態
+        if (loadingScreen && resultSection) {
+            setTimeout(() => {
+                loadingScreen.style.display = 'none';      // 隱藏轉圈圈
+                resultSection.style.opacity = '1';         // 浮現比較結果與 AI 分析
+            }, 800); 
+        }
+    });
+</script>
+
+</body>
+</html>

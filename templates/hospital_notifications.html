@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<!--
+==========================================
+🔔 院方通知中心：查看風險提醒、公告與已讀狀態
+==========================================
+-->
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>院方通知中心</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        body { background: #f4f7f6; color: #25364a; font-family: "Segoe UI", "Microsoft JhengHei", sans-serif; }
+        .main-container { max-width: 980px; margin: 34px auto 56px; padding: 0 20px; }
+        .panel {
+            background: #fff; border: 1px solid #e8edf2; border-radius: 8px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.04); padding: 22px;
+        }
+        .notice-item {
+            border: 1px solid #e8edf2; border-radius: 8px; padding: 16px;
+            background: #fff; margin-bottom: 12px;
+        }
+        .notice-item.unread { border-color: #f1b0b7; background: #fff8f8; }
+        .notice-content { color: #52667d; line-height: 1.65; white-space: pre-wrap; }
+        .notice-meta { color: #8492a6; font-size: 0.88rem; }
+        .detail-content { white-space: pre-wrap; color: #34465b; line-height: 1.75; }
+        .summary-grid {
+            display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px;
+            border-top: 1px solid #eef2f6; padding-top: 14px; margin-bottom: 14px;
+        }
+        .summary-card {
+            border: 1px solid #e8edf2; border-radius: 8px; padding: 10px 12px; background: #fbfcfd;
+        }
+        .summary-label { color: #6c7c8f; font-size: 0.8rem; font-weight: 800; }
+        .summary-value { font-size: 1.35rem; font-weight: 900; line-height: 1.1; margin-top: 4px; }
+        .filter-bar {
+            display: flex; gap: 8px; flex-wrap: wrap; align-items: center;
+            margin-bottom: 14px;
+        }
+        .filter-btn {
+            border: 1px solid #d8e2ec; background: #fff; color: #52667d; border-radius: 999px;
+            padding: 6px 12px; font-size: 0.9rem; font-weight: 700;
+        }
+        .filter-btn.active { background: #0066cc; color: #fff; border-color: #0066cc; }
+        .notice-modal-risk .modal-header { border-top: 5px solid #dc3545; background: #fff8f8; }
+        .notice-modal-award .modal-header { border-top: 5px solid #f0ad4e; background: #fffaf0; }
+        .notice-modal-general .modal-header { border-top: 5px solid #0066cc; background: #f4f9fd; }
+        .empty-state {
+            border: 1px dashed #d6dee8; border-radius: 8px; padding: 36px 18px;
+            text-align: center; color: #8492a6; background: #fbfcfd;
+        }
+        @media (max-width: 768px) {
+            .summary-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        }
+    </style>
+</head>
+<body>
+{% include 'navbar.html' %}
+
+<div class="main-container">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ 'danger' if category == 'analyze_error' else 'success' }} alert-dismissible fade show" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <div class="panel">
+        <div class="d-flex justify-content-between align-items-start gap-3 flex-wrap mb-3">
+            <div>
+                <div class="text-primary fw-bold mb-2"><i class="fas fa-bell me-2"></i>院方通知中心</div>
+                <h3 class="fw-bold mb-0">管理員提醒與審核通知</h3>
+            </div>
+            <div class="d-flex gap-2">
+                <a class="btn btn-outline-primary" href="{{ url_for('hospital_dashboard') }}">
+                    <i class="fas fa-hospital me-1"></i>返回醫院頁
+                </a>
+                {% if notifications %}
+                <form method="POST" action="{{ url_for('mark_all_hospital_notifications_read') }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                    <button type="submit" class="btn btn-success">
+                        <i class="fas fa-check-double me-1"></i>全部已讀
+                    </button>
+                </form>
+                {% endif %}
+            </div>
+        </div>
+
+        {% if notifications %}
+            {% set unread_count = notifications | selectattr('status', 'equalto', 'unread') | list | length %}
+            {% set unread_items = notifications | selectattr('status', 'equalto', 'unread') | list %}
+            {% set risk_count = unread_items | selectattr('category', 'equalto', 'risk') | list | length %}
+            {% set award_count = unread_items | selectattr('category', 'equalto', 'award') | list | length %}
+            {% set general_count = unread_items | rejectattr('category', 'in', ['risk', 'award']) | list | length %}
+            <div class="summary-grid">
+                <div class="summary-card">
+                    <div class="summary-label">全部未讀通知</div>
+                    <div class="summary-value text-danger">{{ unread_count }}</div>
+                </div>
+                <div class="summary-card">
+                    <div class="summary-label">風險提醒</div>
+                    <div class="summary-value text-danger">{{ risk_count }}</div>
+                </div>
+                <div class="summary-card">
+                    <div class="summary-label">獎項審核</div>
+                    <div class="summary-value text-warning">{{ award_count }}</div>
+                </div>
+                <div class="summary-card">
+                    <div class="summary-label">一般通知</div>
+                    <div class="summary-value text-primary">{{ general_count }}</div>
+                </div>
+            </div>
+            <div class="filter-bar" aria-label="通知分類篩選">
+                <button type="button" class="filter-btn active" data-notice-filter="all">全部</button>
+                <button type="button" class="filter-btn" data-notice-filter="unread">未讀</button>
+                <button type="button" class="filter-btn" data-notice-filter="risk">風險提醒</button>
+                <button type="button" class="filter-btn" data-notice-filter="award">獎項審核</button>
+                <button type="button" class="filter-btn" data-notice-filter="general">一般通知</button>
+            </div>
+            <div id="noticeFilterEmpty" class="empty-state d-none">沒有符合此分類的通知</div>
+            {% for notice in notifications %}
+            {% set category_label = {
+                'award': '獎項審核',
+                'risk': '風險提醒',
+                'general': '一般通知'
+            }.get(notice.category or 'general', notice.category or '一般通知') %}
+            <div id="notice-{{ notice.id }}" class="notice-item {{ 'unread' if notice.status == 'unread' else '' }}" data-notice-category="{{ notice.category or 'general' }}" data-notice-status="{{ notice.status }}" data-notice-id="{{ notice.id }}">
+                <div class="d-flex justify-content-between gap-3 align-items-start">
+                    <div>
+                        <div class="fw-bold">
+                            {{ notice.title }}
+                            <span class="badge text-bg-light ms-2">{{ category_label }}</span>
+                            {% if notice.status == 'unread' %}
+                            <span class="badge text-bg-danger ms-2" data-unread-badge>未讀</span>
+                            {% else %}
+                            <span class="badge text-bg-secondary ms-2">已讀</span>
+                            {% endif %}
+                        </div>
+                        <div class="notice-meta mt-2">
+                            <i class="far fa-clock me-1"></i>{{ notice.created_at }}
+                        </div>
+                        <button type="button" class="btn btn-sm btn-outline-primary mt-3" data-bs-toggle="modal" data-bs-target="#noticeDetailModal{{ notice.id }}">
+                            <i class="fas fa-circle-info me-1"></i>查看詳細內容
+                        </button>
+                    </div>
+                    {% if notice.status == 'unread' %}
+                    <form method="POST" action="{{ url_for('mark_hospital_notification_read', notification_id=notice.id) }}" data-read-form class="d-none">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                    </form>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="modal fade notice-modal-{{ notice.category or 'general' }}" id="noticeDetailModal{{ notice.id }}" tabindex="-1" aria-hidden="true" data-notice-modal data-notice-id="{{ notice.id }}">
+                <div class="modal-dialog modal-dialog-centered modal-lg">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <div>
+                                <div class="small text-primary fw-bold mb-1">{{ category_label }}</div>
+                                <h5 class="modal-title fw-bold">{{ notice.title }}</h5>
+                                <div class="notice-meta mt-1">{{ notice.created_at }}</div>
+                            </div>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="detail-content">{{ notice.content }}</div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-primary" data-bs-dismiss="modal">關閉</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        {% else %}
+            <div class="empty-state">目前沒有院方通知</div>
+        {% endif %}
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+    document.querySelectorAll('[data-notice-filter]').forEach(button => {
+        button.addEventListener('click', () => {
+            const filter = button.dataset.noticeFilter;
+            let visibleCount = 0;
+
+            document.querySelectorAll('[data-notice-filter]').forEach(item => {
+                item.classList.toggle('active', item === button);
+            });
+
+            document.querySelectorAll('.notice-item').forEach(item => {
+                const matches = filter === 'all'
+                    || (filter === 'unread' && item.dataset.noticeStatus === 'unread')
+                    || item.dataset.noticeCategory === filter;
+                item.classList.toggle('d-none', !matches);
+                if (matches) visibleCount += 1;
+            });
+
+            document.getElementById('noticeFilterEmpty')?.classList.toggle('d-none', visibleCount !== 0);
+        });
+    });
+
+    function refreshVisibleNoticeFilter() {
+        const activeFilter = document.querySelector('[data-notice-filter].active');
+        activeFilter?.click();
+    }
+
+    function markNoticeReadInView(noticeId) {
+        const item = document.querySelector(`.notice-item[data-notice-id="${noticeId}"]`);
+        if (!item || item.dataset.noticeStatus !== 'unread') return;
+
+        item.dataset.noticeStatus = 'read';
+        item.classList.remove('unread');
+        item.querySelector('[data-unread-badge]')?.remove();
+        item.querySelector('[data-read-form]')?.remove();
+
+        const titleRow = item.querySelector('.fw-bold');
+        if (titleRow && !titleRow.querySelector('[data-read-badge]')) {
+            titleRow.insertAdjacentHTML('beforeend', '<span class="badge text-bg-secondary ms-2" data-read-badge>已讀</span>');
+        }
+
+        refreshVisibleNoticeFilter();
+    }
+
+    document.querySelectorAll('[data-notice-modal]').forEach(modal => {
+        modal.addEventListener('shown.bs.modal', async () => {
+            const noticeId = modal.dataset.noticeId;
+            const item = document.querySelector(`.notice-item[data-notice-id="${noticeId}"]`);
+            if (!item || item.dataset.noticeStatus !== 'unread') return;
+
+            const form = item.querySelector('[data-read-form]');
+            const csrfToken = form?.querySelector('input[name="csrf_token"]')?.value || '';
+            const action = form?.getAttribute('action');
+            if (!action) return;
+
+            try {
+                const response = await fetch(action, {
+                    method: 'POST',
+                    headers: { 'X-CSRFToken': csrfToken },
+                    body: new FormData(form)
+                });
+                if (response.ok || response.redirected) {
+                    markNoticeReadInView(noticeId);
+                }
+            } catch (error) {
+                console.error('標記通知已讀失敗', error);
+            }
+        });
+    });
+</script>
+</body>
+</html>

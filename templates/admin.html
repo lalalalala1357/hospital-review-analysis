@@ -1,0 +1,3611 @@
+<!DOCTYPE html>
+<!--
+==========================================
+🛠️ 後台管理：總覽、評論監控、批次爬蟲、會員審核與公告管理
+==========================================
+-->
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>後台管理 | 醫院評論分析</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <style>
+        body { background-color: #f4f7f6; font-family: "Segoe UI", "Microsoft JhengHei", sans-serif; color: #25364a; }
+        .main-container { max-width: 1360px; margin: 28px auto; padding: 0 20px; }
+        .page-head { display: flex; justify-content: space-between; align-items: end; gap: 20px; margin-bottom: 24px; }
+        .page-title { font-weight: 800; margin: 0; }
+        .page-subtitle { color: #6c757d; margin: 6px 0 0; }
+        .platform-layout { display: grid; grid-template-columns: 248px minmax(0, 1fr); gap: 22px; align-items: start; }
+        .platform-sidebar {
+            position: sticky; top: 86px; background: #fff; border: 1px solid #e8edf2;
+            border-radius: 8px; padding: 16px; box-shadow: 0 4px 15px rgba(0,0,0,0.04);
+        }
+        .platform-label { color: #8492a6; font-size: 0.78rem; font-weight: 800; letter-spacing: 0.08em; margin: 4px 0 12px; }
+        .platform-nav { display: grid; gap: 8px; }
+        .platform-nav-btn {
+            width: 100%; border: 1px solid transparent; background: transparent; color: #4c5f76;
+            border-radius: 8px; padding: 11px 12px; text-align: left; font-weight: 700;
+            display: flex; align-items: center; gap: 10px; transition: 0.18s ease;
+        }
+        .platform-nav-btn:hover { background: #f4f8fc; color: #0066cc; }
+        .platform-nav-btn.active { background: #eef6ff; color: #0066cc; border-color: #cfe5ff; }
+        .platform-nav-btn i { width: 18px; text-align: center; }
+        .platform-side-card {
+            margin-top: 16px; padding: 13px; border-radius: 8px; background: #f8fafc;
+            border: 1px solid #e8edf2; color: #52667d; font-size: 0.9rem;
+        }
+        .platform-content { min-width: 0; }
+        .platform-section[hidden] { display: none !important; }
+        .module-head {
+            background: #fff; border: 1px solid #e8edf2; border-radius: 8px; padding: 18px 20px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.04); margin-bottom: 18px;
+            display: flex; align-items: center; justify-content: space-between; gap: 16px;
+        }
+        .module-title { margin: 0; font-size: 1.18rem; font-weight: 800; color: #25364a; }
+        .module-kicker { color: #8492a6; font-size: 0.86rem; margin: 4px 0 0; }
+        .stat-card, .panel {
+            background: #fff; border: 1px solid #e8edf2; border-radius: 8px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.04);
+        }
+        .stat-card { padding: 18px; min-height: 122px; display: flex; justify-content: space-between; align-items: center; }
+        .stat-label { color: #6c757d; font-weight: 700; font-size: 0.88rem; margin-bottom: 8px; }
+        .stat-value { font-size: 1.9rem; font-weight: 800; line-height: 1; }
+        .stat-note { color: #8492a6; font-size: 0.84rem; margin-top: 8px; }
+        .stat-icon {
+            width: 52px; height: 52px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+            font-size: 21px; background: #eef6ff; color: #0066cc; flex-shrink: 0;
+        }
+        .stat-icon.green { background: #eaf8ef; color: #198754; }
+        .stat-icon.red { background: #fff0f1; color: #dc3545; }
+        .stat-icon.orange { background: #fff6e6; color: #f59f00; }
+        .panel { padding: 22px; height: 100%; }
+        .panel.focus-pulse {
+            border-color: #dc3545;
+            box-shadow: 0 0 0 3px rgba(220, 53, 69, 0.14), 0 4px 15px rgba(0,0,0,0.04);
+        }
+        .panel-title { font-weight: 800; margin-bottom: 16px; }
+        .chart-box { height: 285px; }
+        .monitor-summary-card {
+            background: #fff; border: 1px solid #e8edf2; border-radius: 8px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.04); padding: 16px;
+            min-height: 110px; display: flex; justify-content: space-between; align-items: center; gap: 14px;
+        }
+        .monitor-summary-label { color: #6c757d; font-size: 0.84rem; font-weight: 800; margin-bottom: 8px; }
+        .monitor-summary-value { font-size: 1.65rem; font-weight: 800; line-height: 1; color: #25364a; }
+        .monitor-summary-note { color: #8492a6; font-size: 0.8rem; margin-top: 8px; }
+        .monitor-summary-icon {
+            width: 44px; height: 44px; border-radius: 8px; display: inline-flex; align-items: center; justify-content: center;
+            background: #eef6ff; color: #0066cc; font-size: 18px; flex-shrink: 0;
+        }
+        .monitor-summary-icon.red { background: #fff0f1; color: #dc3545; }
+        .monitor-summary-icon.orange { background: #fff6e6; color: #f59f00; }
+        .monitor-summary-icon.green { background: #eaf8ef; color: #198754; }
+        .row-item { padding: 12px 0; border-bottom: 1px solid #f1f3f5; }
+        .row-item:last-child { border-bottom: 0; }
+        .mini-bar { height: 8px; background: #f1f3f5; border-radius: 999px; overflow: hidden; }
+        .mini-bar span { display: block; height: 100%; border-radius: 999px; }
+        .issue-grid { display: grid; grid-template-columns: 118px 1fr 56px; align-items: center; gap: 12px; }
+        .status-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; margin-right: 8px; }
+        .status-ok { background: #198754; }
+        .status-warn { background: #f59f00; }
+        .status-bad { background: #dc3545; }
+        .alert-list { display: grid; gap: 10px; }
+        .alert-item {
+            display: flex; align-items: center; justify-content: space-between; gap: 12px;
+            padding: 12px 14px; border: 1px solid #e8edf2; border-radius: 8px; background: #fff;
+        }
+        .alert-item.danger { border-color: #f1b0b7; background: #fff8f8; }
+        .task-list { display: grid; gap: 10px; }
+        .task-item {
+            display: flex; align-items: flex-start; justify-content: space-between; gap: 14px;
+            padding: 13px 14px; border: 1px solid #e8edf2; border-radius: 8px; background: #fff;
+        }
+        .task-item.urgent { border-color: #f1b0b7; background: #fff8f8; }
+        .task-item.warning { border-color: #ffe1a6; background: #fffaf0; }
+        .task-item.clickable { cursor: pointer; transition: transform 0.15s ease, box-shadow 0.15s ease; }
+        .task-item.clickable:hover { transform: translateY(-2px); box-shadow: 0 6px 14px rgba(0, 102, 204, 0.12); }
+        .task-item.summary { align-items: center; padding: 10px 12px; }
+        .task-item.summary .small { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+        .task-icon {
+            width: 34px; height: 34px; border-radius: 8px; display: inline-flex;
+            align-items: center; justify-content: center; background: #eef6ff; color: #0066cc; flex-shrink: 0;
+        }
+        .task-item.urgent .task-icon { background: #fff0f1; color: #dc3545; }
+        .task-item.warning .task-icon { background: #fff6e6; color: #f59f00; }
+        .entry-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; }
+        .entry-card {
+            border: 1px solid #e8edf2; border-radius: 8px; background: #fff;
+            padding: 16px; min-height: 190px; display: flex; flex-direction: column; justify-content: space-between;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.04);
+        }
+        .entry-card-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
+        .entry-icon {
+            width: 42px; height: 42px; border-radius: 8px; display: inline-flex; align-items: center; justify-content: center;
+            background: #eef6ff; color: #0066cc; flex-shrink: 0; font-size: 18px;
+        }
+        .entry-icon.red { background: #fff0f1; color: #dc3545; }
+        .entry-icon.orange { background: #fff6e6; color: #f59f00; }
+        .entry-icon.green { background: #eaf8ef; color: #198754; }
+        .entry-title { font-weight: 800; color: #25364a; margin-bottom: 4px; }
+        .entry-desc { color: #8492a6; font-size: 0.82rem; }
+        .entry-metrics { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 14px; }
+        .entry-metric { background: #f8fafc; border: 1px solid #edf2f7; border-radius: 8px; padding: 10px; }
+        .entry-metric-label { color: #8492a6; font-size: 0.76rem; font-weight: 800; margin-bottom: 5px; }
+        .entry-metric-value { color: #25364a; font-size: 1.15rem; font-weight: 900; line-height: 1; }
+        .entry-card .btn { width: 100%; }
+        @media (max-width: 1199.98px) { .entry-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+        @media (max-width: 575.98px) { .entry-grid { grid-template-columns: 1fr; } }
+        .status-row {
+            width: 100%; border: 0; background: transparent; text-align: left;
+            padding: 12px 0; border-bottom: 1px solid #f1f3f5;
+            display: flex; justify-content: space-between; align-items: center; gap: 12px;
+        }
+        .status-row:hover { color: #0066cc; }
+        .status-detail {
+            background: #f8fafc; border: 1px solid #e8edf2; border-radius: 8px;
+            padding: 12px; margin: 10px 0 14px; font-size: 0.9rem;
+        }
+        .ai-mode-control {
+            border: 1px solid #dbe4ee; border-radius: 8px; background: #fff;
+            padding: 12px; margin-bottom: 12px;
+        }
+        .ai-mode-buttons { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+        .ai-mode-btn {
+            border: 1px solid #dbe4ee; background: #fff; color: #25364a;
+            border-radius: 999px; padding: 7px 13px; font-weight: 800;
+            transition: all 0.15s ease;
+        }
+        .ai-mode-btn:hover { border-color: #0066cc; color: #0066cc; background: #eef6ff; }
+        .ai-mode-btn.active { background: #0066cc; border-color: #0066cc; color: #fff; }
+        .ai-mode-btn:disabled { opacity: 0.65; cursor: not-allowed; }
+        .dashboard-health-row .panel { min-height: 248px; }
+        .crawl-summary-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+        .crawl-summary-card {
+            border: 1px solid #e8edf2; border-radius: 8px; background: #f8fafc;
+            padding: 14px; min-height: 94px; display: flex; flex-direction: column; justify-content: space-between;
+        }
+        .crawl-summary-label { color: #6c757d; font-size: 0.82rem; font-weight: 800; }
+        .crawl-summary-value { color: #25364a; font-size: 1.55rem; font-weight: 800; line-height: 1; }
+        .crawl-summary-note { color: #8492a6; font-size: 0.8rem; }
+        .crawl-summary-card.primary { background: #eef6ff; border-color: #cfe5ff; }
+        .crawl-summary-card.primary .crawl-summary-value { color: #0066cc; }
+        .crawl-summary-card.danger { background: #fff8f8; border-color: #f1b0b7; }
+        .crawl-summary-card.danger .crawl-summary-value { color: #dc3545; }
+        @media (max-width: 991.98px) { .crawl-summary-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+        @media (max-width: 575.98px) { .crawl-summary-grid { grid-template-columns: 1fr; } }
+        
+        /* 卡片樣式 */
+        .admin-card {
+            background: #fff; border: 1px solid #e8edf2; border-radius: 8px; padding: 22px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.04); margin-bottom: 24px;
+        }
+        .card-header-custom {
+            border-bottom: 1px solid #f1f3f5; padding-bottom: 14px; margin-bottom: 18px;
+            display: flex; justify-content: space-between; align-items: center; gap: 16px;
+        }
+        .card-title { color: #0066cc; font-weight: 800; margin: 0; }
+        
+        /* 表格樣式 */
+        .table thead th { background-color: #f8f9fa; color: #555; font-weight: 600; border-bottom: 2px solid #e0e0e0; }
+        
+        /* 評論標籤樣式 */
+        .badge-pos { background-color: #e6f9ed; color: #28a745; border: 1px solid #28a745; }
+        .badge-neg { background-color: #fff0f0; color: #dc3545; border: 1px solid #dc3545; }
+        
+        /* 醫院連結樣式 */
+        .hospital-link {
+            color: #0066cc; font-weight: bold; text-decoration: none; cursor: pointer;
+            transition: 0.2s;
+        }
+        .hospital-link:hover { color: #004c99; text-decoration: underline; }
+        .compact-review-list { max-height: 420px; overflow-y: auto; }
+        .hospital-review-board { max-height: 520px; overflow-y: auto; }
+        .hospital-table-scroll { max-height: 540px; overflow-y: auto; }
+        .public-award-table-scroll { max-height: 400px; overflow-y: auto; }
+        .symptom-rank-scroll {
+            max-height: 420px; overflow-y: auto; border: 1px solid #e8edf2;
+            border-radius: 8px; background: #fff;
+        }
+        .symptom-rank-scroll table { margin-bottom: 0; }
+        .symptom-rank-scroll thead th {
+            position: sticky; top: 0; z-index: 2; background: #f8f9fa;
+        }
+        .hospital-table-scroll thead th,
+        .public-award-table-scroll thead th {
+            position: sticky; top: 0; z-index: 2;
+        }
+
+        .issue-rank {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 12px 14px; border: 1px solid #f1b0b7; border-radius: 8px;
+            background: #fff8f8; margin-bottom: 10px;
+            cursor: pointer; transition: transform 0.15s ease, box-shadow 0.15s ease;
+        }
+        .issue-rank:hover { transform: translateY(-2px); box-shadow: 0 6px 14px rgba(220, 53, 69, 0.12); }
+        .issue-rank .rank-num {
+            width: 34px; height: 34px; border-radius: 50%;
+            display: inline-flex; align-items: center; justify-content: center;
+            background: #dc3545; color: white; font-weight: 700; margin-right: 10px;
+        }
+        .issue-rank:first-child { background: #fff1f1; border-color: #dc3545; }
+        .negative-rank-scroll { max-height: 360px; overflow-y: auto; padding-right: 6px; }
+        .batch-preview-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 8px; max-height: 180px; overflow-y: auto; }
+        .batch-preview-item { display: flex; gap: 8px; align-items: baseline; padding: 8px 10px; border: 1px solid #e8edf2; border-radius: 8px; background: #fff; }
+        .batch-preview-index { color: #8492a6; font-size: 0.8rem; font-weight: 800; flex-shrink: 0; }
+        .batch-preview-name { color: #25364a; font-weight: 700; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .batch-manage-grid { display: grid; grid-template-columns: 1fr; gap: 12px; }
+        .batch-manage-button { border: 1px solid #dbe7f3; background: #fff; border-radius: 8px; padding: 14px; text-align: left; display: flex; align-items: center; gap: 12px; transition: 0.18s ease; }
+        .batch-manage-button:hover { border-color: #9cc9ff; box-shadow: 0 8px 20px rgba(0,102,204,0.1); transform: translateY(-1px); }
+        .batch-manage-icon { width: 38px; height: 38px; border-radius: 8px; background: #eef6ff; color: #0066cc; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; }
+        .batch-job-card { border: 1px solid #e2eaf3; border-radius: 8px; background: #fff; padding: 14px; }
+        .batch-job-card + .batch-job-card { margin-top: 10px; }
+        .batch-job-metrics { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin-top: 12px; }
+        .batch-job-metric { background: #f8fafc; border: 1px solid #edf2f7; border-radius: 8px; padding: 8px 10px; }
+        .batch-job-metric .label { color: #8492a6; font-size: 0.78rem; font-weight: 800; }
+        .batch-job-metric .value { color: #25364a; font-size: 1.05rem; font-weight: 900; }
+        #batchRunningControls.d-flex { display: flex !important; }
+        .modal-backdrop { z-index: 6000; }
+        .modal { z-index: 6010; padding-top: 92px; }
+        .modal-dialog { margin-top: 0; margin-bottom: 24px; }
+        .modal-dialog-scrollable { max-height: calc(100vh - 116px); }
+        .modal-dialog-scrollable .modal-content { max-height: calc(100vh - 116px); }
+        .modal-header {
+            position: sticky; top: 0; z-index: 3; background: #fff;
+            align-items: flex-start; gap: 14px;
+        }
+        .modal-header.bg-dark { background: #212529 !important; }
+        .modal-title { line-height: 1.35; padding-right: 10px; }
+        .modal .btn-close { flex-shrink: 0; margin-top: 2px; }
+        .admin-split-left {
+            border-right: 1px solid #e8edf2;
+            padding-right: 24px;
+        }
+        .admin-split-right {
+            padding-left: 24px;
+        }
+        @media (max-width: 768px) {
+            .page-head { display: block; }
+            .page-head .btn-toolbar { margin-top: 16px; }
+            .platform-layout { display: block; }
+            .platform-sidebar { position: static; margin-bottom: 18px; }
+            .platform-nav { grid-template-columns: 1fr 1fr; }
+            .module-head { display: block; }
+            .issue-grid { grid-template-columns: 92px 1fr 48px; }
+            .chart-box { height: 250px; }
+            .card-header-custom { display: block; }
+            .card-header-custom > * + * { margin-top: 10px; }
+            .admin-split-left {
+                border-right: 0;
+                border-bottom: 1px solid #e8edf2;
+                padding-right: 0;
+                padding-bottom: 20px;
+            }
+            .admin-split-right {
+                padding-left: 0;
+            }
+        }
+    </style>
+</head>
+<body>
+
+{% include 'navbar.html' %}
+
+<div class="main-container">
+    
+    <div class="page-head">
+        <div>
+            <h2 class="page-title"><i class="fas fa-shield-heart me-2 text-primary"></i>醫療口碑與社區健康監測平台</h2>
+            <p class="page-subtitle" id="backendViewSubtitle">整合評論監控、健康警示、公告發布與平台資料維護。</p>
+        </div>
+    </div>
+    
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ 'danger' if category == 'analyze_error' else 'success' }} alert-dismissible fade show" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <div class="platform-layout">
+        <aside class="platform-sidebar">
+            <div class="platform-label">MANAGEMENT</div>
+            <div class="platform-nav">
+                <button type="button" class="platform-nav-btn active" data-platform-view="dashboard">
+                    <i class="fas fa-gauge-high"></i> 工作台總覽
+                </button>
+                <button type="button" class="platform-nav-btn" data-platform-view="reviews">
+                    <i class="fas fa-comments"></i> 評論監控
+                </button>
+                <button type="button" class="platform-nav-btn" data-platform-view="crawler">
+                    <i class="fas fa-spider"></i> 爬蟲管理
+                </button>
+                <button type="button" class="platform-nav-btn" data-platform-view="health">
+                    <i class="fas fa-heartbeat"></i> 健康警示
+                </button>
+                <button type="button" class="platform-nav-btn" data-platform-view="data">
+                    <i class="fas fa-database"></i> 醫院資料庫
+                </button>
+                <button type="button" class="platform-nav-btn" data-platform-view="users">
+                    <i class="fas fa-users"></i> 會員權限
+                </button>
+            </div>
+            <div class="platform-side-card">
+                <div class="fw-bold text-dark mb-1">管理流程</div>
+                <div>監控風險、確認警示、發布公告、維護資料都集中在這裡處理。</div>
+            </div>
+        </aside>
+
+        <main class="platform-content">
+    <section id="dashboardPanel" class="platform-section">
+        <div class="module-head">
+            <div>
+                <h3 class="module-title"><i class="fas fa-gauge-high me-2 text-primary"></i>工作台總覽</h3>
+                <p class="module-kicker">快速掌握平台資料量、風險事件和今日待處理事項。</p>
+            </div>
+            <a href="{{ url_for('backup_db') }}" class="btn btn-warning fw-bold" onclick="return confirm('確定要下載系統資料庫 (.db) 進行備份嗎？\n\n注意：此檔案包含所有會員與醫院評論資料。');">
+                <i class="fas fa-database me-1"></i>備份資料庫
+            </a>
+        </div>
+        <div class="row g-3 mb-4">
+            <div class="col-lg-3 col-sm-6">
+                <div class="stat-card">
+                    <div>
+                        <div class="stat-label">今日新增評論</div>
+                        <div class="stat-value" id="todayReviews">--</div>
+                        <div class="stat-note">今日更新 <span id="todayHospitals">--</span> 家醫院</div>
+                    </div>
+                    <div class="stat-icon orange"><i class="fas fa-calendar-day"></i></div>
+                </div>
+            </div>
+            <div class="col-lg-3 col-sm-6">
+                <div class="stat-card">
+                    <div>
+                        <div class="stat-label">總評論數</div>
+                        <div class="stat-value" id="totalReviews">--</div>
+                        <div class="stat-note">收錄 <span id="totalHospitals">--</span> 家醫院</div>
+                    </div>
+                    <div class="stat-icon"><i class="fas fa-database"></i></div>
+                </div>
+            </div>
+            <div class="col-lg-3 col-sm-6">
+                <div class="stat-card">
+                    <div>
+                        <div class="stat-label">負評比例</div>
+                        <div class="stat-value text-danger" id="negativeRate">--</div>
+                        <div class="stat-note"><span id="negativeCount">--</span> 則負評需要追蹤</div>
+                    </div>
+                    <div class="stat-icon red"><i class="fas fa-triangle-exclamation"></i></div>
+                </div>
+            </div>
+            <div class="col-lg-3 col-sm-6">
+                <div class="stat-card">
+                    <div>
+                        <div class="stat-label">會員數</div>
+                        <div class="stat-value" id="totalUsers">--</div>
+                        <div class="stat-note">已註冊使用者</div>
+                    </div>
+                    <div class="stat-icon green"><i class="fas fa-users"></i></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row g-4 mb-4 dashboard-health-row">
+            <div class="col-lg-6">
+                <div class="panel">
+                    <h5 class="panel-title"><i class="fas fa-server me-2 text-primary"></i>系統狀態</h5>
+                    <div id="systemStatus"></div>
+                </div>
+            </div>
+            <div class="col-lg-6">
+                <div class="panel">
+                    <h5 class="panel-title"><i class="fas fa-clipboard-check me-2 text-danger"></i>待處理事項</h5>
+                    <div class="small fw-bold text-danger mb-2">待處理</div>
+                    <div id="pendingTaskCenter" class="task-list"></div>
+                </div>
+            </div>
+        </div>
+        <div class="panel">
+            <div class="d-flex justify-content-between align-items-start gap-3 flex-wrap mb-3">
+                <div>
+                    <h5 class="panel-title mb-1"><i class="fas fa-compass me-2 text-primary"></i>功能入口與今日狀態</h5>
+                    <div class="small text-muted">依今天狀況快速前往需要處理的管理頁。</div>
+                </div>
+            </div>
+            <div class="entry-grid" id="dashboardEntryCards">
+                <div class="text-muted">正在載入入口狀態...</div>
+            </div>
+        </div>
+    </section>
+
+    <section id="reviewsPanel" class="platform-section" hidden>
+        <div class="module-head">
+            <div>
+                <h3 class="module-title"><i class="fas fa-comments me-2 text-primary"></i>評論監控</h3>
+                <p class="module-kicker">集中追蹤評論趨勢、批次爬蟲、情緒比例與高風險醫院。</p>
+            </div>
+        </div>
+
+        <div class="row g-4 mb-4">
+            <div class="col-lg-8">
+                <div class="panel">
+                    <h5 class="panel-title"><i class="fas fa-chart-line me-2 text-primary"></i>近 7 天評論趨勢</h5>
+                    <div class="chart-box"><canvas id="trendChart"></canvas></div>
+                </div>
+            </div>
+            <div class="col-lg-4">
+                <div class="panel">
+                    <h5 class="panel-title fs-4"><i class="fas fa-chart-pie me-2 text-primary"></i>整體情緒監控</h5>
+                    <div class="chart-box"><canvas id="sentimentChart"></canvas></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row g-4 mb-4">
+            <div class="col-lg-5">
+                <div class="panel" id="riskHospitalsPanel">
+                    <h5 class="panel-title"><i class="fas fa-hospital-user me-2 text-danger"></i>高風險醫院</h5>
+                    <div id="riskHospitals"></div>
+                </div>
+            </div>
+            <div class="col-lg-7">
+                <div class="panel">
+                    <h5 class="panel-title"><i class="fas fa-list-ol me-2 text-danger"></i>待改善負評原因</h5>
+                    <div id="issueList"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row g-4 mb-4">
+            <div class="col-lg-6">
+                <div class="panel">
+                    <h5 class="panel-title"><i class="fas fa-clock-rotate-left me-2 text-primary"></i>最近更新醫院</h5>
+                    <div id="recentHospitals"></div>
+                </div>
+            </div>
+            <div class="col-lg-6">
+                <div class="panel">
+                    <div class="card-header-custom border-bottom pb-3 mb-3">
+                        <div>
+                            <h5 class="panel-title text-danger mb-1">
+                                <i class="fas fa-triangle-exclamation me-2"></i>負評原因排行榜
+                            </h5>
+                            <small class="text-muted">統計所有已收錄負面評論，協助快速找出常見問題。</small>
+                        </div>
+                    </div>
+
+                    {% if top_negative_issues %}
+                        {% set max_issue_count = top_negative_issues[0].count %}
+                        <div class="negative-rank-scroll">
+                        {% for issue in top_negative_issues %}
+                        <div class="issue-rank" data-issue="{{ issue.issue_category }}" onclick="openIssueReviews(this.dataset.issue)" title="點擊查看此原因的評論">
+                            <div class="d-flex align-items-center flex-grow-1">
+                                <span class="rank-num">{{ loop.index }}</span>
+                                <div class="flex-grow-1">
+                                    <div class="fw-bold text-dark">{{ issue.issue_category }}</div>
+                                    <div class="progress mt-2" style="height: 6px;">
+                                        <div class="progress-bar bg-danger" style="width: {{ (issue.count / max_issue_count * 100)|round(0) }}%;"></div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="d-flex align-items-center gap-2 ms-3">
+                                <span class="badge bg-danger rounded-pill">{{ issue.count }} 則</span>
+                                <i class="fas fa-chevron-right text-danger small"></i>
+                            </div>
+                        </div>
+                        {% endfor %}
+                        </div>
+                    {% else %}
+                        <div class="text-center text-muted py-4">
+                            <i class="fas fa-inbox fa-2x mb-2 opacity-50"></i><br>
+                            目前還沒有負面評論可統計。
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <div class="panel">
+            <div class="card-header-custom border-bottom pb-3 mb-3">
+                <h5 class="panel-title text-warning text-darken" style="color: #d39e00 !important;">
+                    <i class="fas fa-filter me-2"></i>關鍵字過濾規則
+                </h5>
+                <small class="text-muted">加入黑名單的詞彙，將從前台 AI 關鍵字圖表中隱藏。</small>
+            </div>
+            
+            <form action="{{ url_for('add_stop_word') }}" method="POST" class="d-flex mb-4" style="max-width: 400px;">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                <input type="text" name="word" class="form-control me-2" placeholder="輸入想過濾的詞彙，例如：掛號" required>
+                <button type="submit" class="btn btn-warning fw-bold text-dark shadow-sm">
+                    <i class="fas fa-plus me-1"></i>新增過濾
+                </button>
+            </form>
+
+            <div style="max-height: 160px; overflow-y: auto; padding: 15px; border: 1px solid #e9ecef; border-radius: 10px; background-color: #fcfcfc; box-shadow: inset 0 2px 4px rgba(0,0,0,0.02);">
+                <div class="d-flex flex-wrap gap-2">
+                    {% for sw in stop_words|default([]) %}
+                    <span class="badge bg-white text-dark border d-flex align-items-center shadow-sm" style="font-size: 0.95rem; padding: 6px 12px; border-radius: 8px;">
+                        <i class="fas fa-tag text-muted me-2 small"></i> {{ sw[1] }}
+                        <form action="{{ url_for('delete_stop_word', word_id=sw[0]) }}" method="POST" class="ms-2 mb-0" onsubmit="return confirm('確定要解除過濾，讓「{{ sw[1] }}」重新出現在圖表上嗎？');">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                            <button type="submit" class="btn-close" style="font-size: 0.5rem;" aria-label="關閉"></button>
+                        </form>
+                    </span>
+                    {% endfor %}
+                    
+                    {% if not stop_words %}
+                    <p class="text-muted small mb-0"><i class="fas fa-info-circle me-1"></i>目前沒有設定任何過濾詞。</p>
+                    {% endif %}
+                </div>
+            </div>
+            <div class="text-end mt-2">
+                <small class="text-muted"><i class="fas fa-info-circle me-1"></i>共有 {{ stop_words|length }} 個過濾詞，可上下滑動檢視</small>
+            </div>
+        </div>
+    </section>
+
+    <section id="crawlerPanel" class="platform-section" hidden>
+        <div class="module-head">
+            <div>
+                <h3 class="module-title"><i class="fas fa-spider me-2 text-primary"></i>爬蟲管理</h3>
+                <p class="module-kicker">集中管理批次爬取、排程、任務紀錄與近 7 天執行趨勢。</p>
+            </div>
+            <span id="batchCrawlStatus" class="small text-muted"></span>
+        </div>
+
+        <div class="row g-4 mb-4 dashboard-health-row">
+            <div class="col-lg-5">
+                <div class="panel">
+                    <div class="d-flex justify-content-between align-items-start gap-3 flex-wrap mb-3">
+                        <h5 class="panel-title mb-0"><i class="fas fa-stopwatch me-2 text-primary"></i>今日爬蟲摘要</h5>
+                        <span class="small text-muted" id="todayCrawlerLatest">最新執行：--</span>
+                    </div>
+                    <div id="todayCrawlerSummary" class="crawl-summary-grid"></div>
+                </div>
+            </div>
+            <div class="col-lg-7">
+                <div class="panel">
+                    <h5 class="panel-title mb-1"><i class="fas fa-robot me-2 text-primary"></i>批次爬蟲設定</h5>
+                    <div class="small text-muted">設定批次爬取範圍、每家留言數與休息節奏，並預覽本次會爬哪些醫院。</div>
+                    <form id="batchCrawlForm" class="row g-2 align-items-end mt-3">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                        <div class="col-6 col-md-4">
+                            <label class="form-label small text-muted">從第幾家開始</label>
+                            <input type="number" name="start_index" class="form-control" value="1" min="1">
+                        </div>
+                        <div class="col-6 col-md-4">
+                            <label class="form-label small text-muted">爬幾家</label>
+                            <input type="number" name="hospital_count" class="form-control" value="5" min="1" max="300">
+                        </div>
+                        <div class="col-6 col-md-4">
+                            <label class="form-label small text-muted">留言數</label>
+                            <input type="number" name="max_reviews" class="form-control" value="30" min="1" max="200">
+                        </div>
+                        <div class="col-6 col-md-4">
+                            <label class="form-label small text-muted">每幾家休息</label>
+                            <input type="number" name="rest_every" class="form-control" value="5" min="1" max="100">
+                        </div>
+                        <div class="col-6 col-md-4">
+                            <label class="form-label small text-muted">休息秒數</label>
+                            <input type="number" name="rest_seconds" class="form-control" value="20" min="0" max="600">
+                        </div>
+                        <div class="col-6 col-md-4">
+                            <button type="submit" id="batchStartButton" class="btn btn-primary w-100 fw-bold">
+                                <i class="fas fa-play me-1"></i>開始
+                            </button>
+                            <div id="batchRunningControls" class="d-none gap-2">
+                                <button type="button" id="batchPauseButton" class="btn btn-outline-warning fw-bold flex-fill" onclick="toggleBatchPause()">
+                                    <i class="fas fa-pause me-1"></i>暫停
+                                </button>
+                                <button type="button" class="btn btn-outline-danger fw-bold flex-fill" onclick="stopBatchCrawl()">
+                                    <i class="fas fa-stop me-1"></i>停止
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+
+                    <div class="border rounded p-3 bg-light mt-3">
+                        <div class="d-flex justify-content-between align-items-center gap-2 flex-wrap mb-2">
+                            <div>
+                                <div class="fw-bold"><i class="fas fa-list-check me-1 text-primary"></i>本次會爬哪些醫院</div>
+                                <div id="batchEstimateText" class="small text-muted">調整數量後會自動粗估時間。</div>
+                            </div>
+                            <button type="button" class="btn btn-sm btn-outline-primary fw-bold" onclick="updateBatchPreview()">
+                                <i class="fas fa-rotate me-1"></i>更新清單
+                            </button>
+                        </div>
+                        <div id="batchPreviewSummary" class="small text-muted mb-2">正在讀取預覽...</div>
+                        <div id="batchPreviewList" class="batch-preview-list"></div>
+                    </div>
+
+                    <div class="row g-3 mt-1">
+                        <div class="col-lg-7">
+                            <div class="border rounded p-3 bg-light h-100">
+                                <div class="d-flex justify-content-between align-items-center gap-2 mb-2">
+                                    <div class="fw-bold"><i class="fas fa-bars-progress me-1 text-primary"></i>批次爬蟲進度</div>
+                                    <span id="batchProgressPercent" class="badge text-bg-primary">0%</span>
+                                </div>
+                                <div class="progress mb-2" style="height: 10px;">
+                                    <div id="batchProgressBar" class="progress-bar progress-bar-striped" role="progressbar" style="width: 0%"></div>
+                                </div>
+                                <div id="batchProgressText" class="small text-muted">尚未執行批次爬蟲。</div>
+                                <div id="batchProgressMetrics" class="small text-muted mt-1"></div>
+                            </div>
+                        </div>
+                        <div class="col-lg-5">
+                            <div class="border rounded p-3 h-100">
+                                <div class="fw-bold mb-2"><i class="fas fa-sliders me-1 text-primary"></i>批次管理</div>
+                                <div class="batch-manage-grid">
+                                    <button type="button" class="batch-manage-button" data-bs-toggle="modal" data-bs-target="#batchSchedulesModal" onclick="loadBatchSchedules()">
+                                        <span class="batch-manage-icon"><i class="fas fa-calendar-check"></i></span>
+                                        <span><span class="fw-bold d-block">自動排程爬蟲</span><span class="small text-muted">新增、停用或刪除</span></span>
+                                    </button>
+                                    <button type="button" class="batch-manage-button" data-bs-toggle="modal" data-bs-target="#batchJobsModal" onclick="loadBatchJobs()">
+                                        <span class="batch-manage-icon"><i class="fas fa-clock-rotate-left"></i></span>
+                                        <span><span class="fw-bold d-block">批次任務紀錄</span><span class="small text-muted">查看最近 30 筆</span></span>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="panel mb-4">
+            <h5 class="panel-title"><i class="fas fa-chart-line me-2 text-primary"></i>近 7 天爬蟲執行次數</h5>
+            <div class="chart-box"><canvas id="crawlerRunChart"></canvas></div>
+        </div>
+    </section>
+
+    <section id="dataPanel" class="platform-section" hidden>
+        <div class="module-head">
+            <div>
+                <h3 class="module-title"><i class="fas fa-database me-2 text-primary"></i>醫院資料庫</h3>
+                <p class="module-kicker">管理醫院得獎認證、已收錄醫院與評論匯出資料。</p>
+            </div>
+        </div>
+    <div class="row">
+        <div class="col-12">
+            <div class="card border-0 shadow-sm mb-4">
+                <div class="card-header bg-warning text-dark fw-bold">
+                    <i class="fas fa-medal me-2"></i>醫院認證與得獎申請審核
+                </div>
+                <div class="card-body">
+                    <div class="small text-muted mb-3">醫院端送出的獎項/認證申請會先進入待審核，通過後才會公開顯示於醫院詳細檔案。</div>
+            
+                    <div class="mb-3">
+                        <div class="input-group mb-2">
+                            <span class="input-group-text bg-white"><i class="fas fa-search text-muted"></i></span>
+                            <input type="search" id="awardSearchInput" class="form-control" placeholder="搜尋醫院名稱、科別或認證項目">
+                        </div>
+                        <div class="d-flex gap-2 flex-wrap">
+                            <button type="button" class="btn btn-warning award-filter active" data-status="pending">待審核</button>
+                            <button type="button" class="btn btn-outline-secondary fw-bold" data-bs-toggle="modal" data-bs-target="#awardHistoryModal">
+                                <i class="fas fa-clock-rotate-left me-1"></i>歷史紀錄
+                            </button>
+                        </div>
+                    </div>
+            
+                    <div class="table-responsive mb-4" style="max-height: 420px; overflow-y: auto;">
+                        <table class="table table-hover align-middle">
+                            <thead class="table-light sticky-top">
+                                <tr>
+                                    <th>狀態</th>
+                                    <th>醫院名稱</th>
+                                    <th>申請項目</th>
+                                    <th>申請時間</th>
+                                    <th style="width: 96px;">操作</th>
+                                </tr>
+                            </thead>
+                            <tbody id="awardTableBody">
+                                {% for item in award_applications %}
+                                <tr data-award-row data-status="{{ item.status }}" data-search-text="{{ (item.hospital_name ~ ' ' ~ item.department ~ ' ' ~ item.award_name)|e }}">
+                                    <td>
+                                        <span class="badge {% if item.status == 'approved' %}text-bg-success{% elif item.status == 'rejected' %}text-bg-danger{% else %}text-bg-warning{% endif %}">
+                                            {% if item.status == 'approved' %}已通過{% elif item.status == 'rejected' %}已退回{% else %}待審核{% endif %}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <div class="fw-bold">{{ item.hospital_name }}</div>
+                                        <div class="small text-muted">{{ item.applicant_username or '院方帳號' }}</div>
+                                    </td>
+                                    <td><span class="text-warning fw-bold"><i class="fas fa-star me-1"></i>{{ item.department }} · {{ item.award_name }}</span></td>
+                                    <td class="small text-muted">{{ item.created_at }}</td>
+                                    <td>
+                                        <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#awardApplicationModal{{ item.id }}">
+                                            查看
+                                        </button>
+                                    </td>
+                                </tr>
+                                <tr class="d-none"><td colspan="5"></td></tr>
+                                {% else %}
+                                <tr id="awardInitialEmptyRow">
+                                    <td colspan="5" class="text-center text-muted py-3">目前沒有任何得獎或認證申請</td>
+                                </tr>
+                                {% endfor %}
+                                <tr id="awardEmptyStateRow" class="d-none">
+                                    <td colspan="5" class="text-center text-muted py-3">沒有符合條件的申請紀錄</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    {% for item in award_applications %}
+                    <div class="modal fade" id="awardApplicationModal{{ item.id }}" tabindex="-1" aria-hidden="true">
+                        <div class="modal-dialog modal-lg modal-dialog-scrollable">
+                            <div class="modal-content">
+                                <div class="modal-header">
+                                    <h5 class="modal-title fw-bold">申請詳細內容：{{ item.hospital_name }}</h5>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="關閉"></button>
+                                </div>
+                                <div class="modal-body">
+                                    <div class="row g-3 mb-3">
+                                        <div class="col-md-6"><div class="small text-muted">狀態</div><div class="fw-bold">{% if item.status == 'approved' %}已通過{% elif item.status == 'rejected' %}已退回{% else %}待審核{% endif %}</div></div>
+                                        <div class="col-md-6"><div class="small text-muted">申請時間</div><div class="fw-bold">{{ item.created_at }}</div></div>
+                                        <div class="col-md-6"><div class="small text-muted">醫院名稱</div><div class="fw-bold">{{ item.hospital_name }}</div></div>
+                                        <div class="col-md-6"><div class="small text-muted">申請帳號</div><div class="fw-bold">{{ item.applicant_username or '未記錄' }}</div></div>
+                                        <div class="col-md-6"><div class="small text-muted">科別</div><div>{{ item.department }}</div></div>
+                                        <div class="col-md-6"><div class="small text-muted">申請項目</div><div>{{ item.award_name }}</div></div>
+                                        <div class="col-12">
+                                            <div class="small text-muted">證明文件</div>
+                                            {% if item.proof_document %}
+                                                <a href="{{ url_for('static', filename='uploads/proofs/' ~ item.proof_document) }}" target="_blank" class="btn btn-sm btn-info text-white mt-1 fw-bold">
+                                                    <i class="fas fa-image me-1"></i>查看證明文件
+                                                </a>
+                                            {% else %}
+                                                <div class="text-muted">未上傳文件</div>
+                                            {% endif %}
+                                        </div>
+                                        {% if item.admin_note %}
+                                        <div class="col-12"><div class="alert alert-secondary mb-0"><strong>審核備註：</strong>{{ item.admin_note }}</div></div>
+                                        {% endif %}
+                                    </div>
+
+                                    {% if item.status == 'pending' %}
+                                    <div class="border rounded p-3 bg-light">
+                                        <div class="fw-bold mb-2">審核操作</div>
+                                        <div class="d-flex gap-2 flex-wrap">
+                                            <form action="{{ url_for('review_award_application', application_id=item.id, action='approve') }}" method="POST" class="d-flex gap-2 flex-grow-1">
+                                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                                                <input type="text" name="admin_note" class="form-control" placeholder="通過備註">
+                                                <button type="submit" class="btn btn-success text-nowrap" onclick="return confirm('確定通過這筆申請嗎？');">通過</button>
+                                            </form>
+                                            <form action="{{ url_for('review_award_application', application_id=item.id, action='reject') }}" method="POST" class="d-flex gap-2 flex-grow-1">
+                                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                                                <input type="text" name="admin_note" class="form-control" placeholder="退回原因">
+                                                <button type="submit" class="btn btn-outline-danger text-nowrap" onclick="return confirm('確定退回這筆申請嗎？');">退回</button>
+                                            </form>
+                                        </div>
+                                    </div>
+                                    {% endif %}
+
+                                    <div class="mt-3">
+                                        <div class="fw-bold mb-2">操作紀錄</div>
+                                        {% for history in item.history %}
+                                        <div class="border rounded p-2 mb-2">
+                                            <span class="badge {% if history.action == 'approved' %}text-bg-success{% elif history.action == 'rejected' %}text-bg-danger{% else %}text-bg-secondary{% endif %}">
+                                                {% if history.action == 'approved' %}審核通過{% elif history.action == 'rejected' %}退回申請{% else %}送出申請{% endif %}
+                                            </span>
+                                            <span class="small text-muted ms-2">{{ history.created_at }} · {{ history.actor_username or '系統' }}</span>
+                                            {% if history.note %}<div class="small mt-1">{{ history.note }}</div>{% endif %}
+                                        </div>
+                                        {% else %}
+                                        <div class="text-muted small">尚無操作紀錄</div>
+                                        {% endfor %}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+            
+                    <div class="d-flex justify-content-between align-items-center gap-3 flex-wrap mb-3">
+                        <h6 class="fw-bold text-dark mb-0">已通過公開紀錄總清單</h6>
+                        <div class="input-group" style="max-width: 420px;">
+                            <span class="input-group-text bg-white"><i class="fas fa-search text-muted"></i></span>
+                            <input type="search" id="publicAwardSearchInput" class="form-control" placeholder="搜尋醫院、科別或得獎/認證項目">
+                            <button type="button" class="btn btn-outline-secondary" onclick="clearPublicAwardSearch()">
+                                <i class="fas fa-rotate-left me-1"></i>清除
+                            </button>
+                        </div>
+                    </div>
+                    <div class="table-responsive public-award-table-scroll">
+                        <table class="table table-hover align-middle">
+                            <thead class="table-light sticky-top">
+                                <tr>
+                                    <th>醫院名稱</th>
+                                    <th>科別</th>
+                                    <th>得獎/認證項目</th>
+                                    <th class="text-end">操作</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for award in awards %}
+                                <tr data-public-award-row data-public-award-text="{{ (award.hospital_name ~ ' ' ~ award.department ~ ' ' ~ award.award_name)|e }}">
+                                    <td class="fw-bold">{{ award.hospital_name }}</td>
+                                    <td><span class="badge bg-secondary">{{ award.department }}</span></td>
+                                    <td><span class="text-warning fw-bold"><i class="fas fa-star me-1"></i>{{ award.award_name }}</span></td>
+                                    <td class="text-end">
+                                        <form action="/admin/delete_award/{{ award.id }}" method="POST" style="display:inline;">
+                                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                                            <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('確定要刪除這筆得獎紀錄嗎？');">
+                                                <i class="fas fa-trash-alt"></i>
+                                            </button>
+                                        </form>
+                                    </td>
+                                </tr>
+                                {% else %}
+                                <tr id="publicAwardInitialEmptyRow">
+                                    <td colspan="4" class="text-center text-muted py-3">目前沒有任何得獎紀錄喔！</td>
+                                </tr>
+                                {% endfor %}
+                                <tr id="publicAwardEmptyStateRow" class="d-none">
+                                    <td colspan="4" class="text-center text-muted py-3">沒有符合搜尋條件的公開紀錄</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div class="admin-card">
+                <div class="card-header-custom">
+                    <h5 class="card-title"><i class="fas fa-hospital-alt me-2"></i>已收錄醫院</h5>
+                    <small class="text-muted">顯示全部已爬取紀錄，可查看評論或下載評論資料。</small>
+                </div>
+                <div class="row g-2 mb-3 align-items-center">
+                    <div class="col-md-6">
+                        <div class="input-group">
+                            <span class="input-group-text bg-white"><i class="fas fa-search text-muted"></i></span>
+                            <input type="search" id="hospitalSearchInput" class="form-control" placeholder="搜尋醫院名稱或地址">
+                        </div>
+                    </div>
+                    <div class="col-md-2">
+                        <button type="button" class="btn btn-outline-secondary w-100" onclick="clearHospitalSearch()">
+                            <i class="fas fa-rotate-left me-1"></i>清除搜尋
+                        </button>
+                    </div>
+                    <div class="col-md-4 text-md-end">
+                        <a href="{{ url_for('backup_db') }}" class="btn btn-warning fw-bold" onclick="return confirm('確定要下載系統資料庫 (.db) 進行備份嗎？\n\n注意：此檔案包含所有會員與醫院評論資料。');">
+                            <i class="fas fa-database me-1"></i>備份資料庫
+                        </a>
+                    </div>
+                </div>
+                <div class="table-responsive hospital-table-scroll">
+                    <table class="table table-hover align-middle">
+                        <thead class="table-light">
+                            <tr>
+                                <th width="10%">ID</th>
+                                <th width="25%">醫院名稱 (點擊查看)</th>
+                                <th width="25%">地址/備註</th>
+                                <th width="15%">評論數</th>
+                                <th width="15%" class="text-nowrap">最後更新</th>
+                                <th width="10%">操作</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for h in hospitals %}
+                            <tr data-hospital-row data-hospital-text="{{ (h.name ~ ' ' ~ h.display_address)|e }}">
+                                <td class="text-muted">#{{ h.id }}</td>
+                                <td>
+                                    <a class="hospital-link" data-hospital-id="{{ h.id }}" data-hospital-name="{{ h.name|e }}" data-profile-url="{{ url_for('hospital_profile', hospital_id=h.id) }}" onclick="openReviewModal(this.dataset.hospitalId, this.dataset.hospitalName, this.dataset.profileUrl)">
+                                        {{ h.name }}
+                                    </a>
+                                </td>
+                                <td class="small text-muted">
+                                    <i class="fas fa-map-marker-alt me-1 text-secondary"></i> {{ h.display_address }}
+                                </td>
+                                <td>
+                                    <span class="badge bg-info text-dark">{{ h.review_count }} 則</span>
+                                </td>
+                                <td class="small text-muted text-nowrap">
+                                    {% if h.last_activity %}
+                                        {% set updated_parts = (h.last_activity|string|replace('T', ' ')).split(' ') %}
+                                        <span class="d-block">{{ updated_parts[0] }}</span>
+                                        <span class="d-block">{{ updated_parts[1] if updated_parts|length > 1 else '--' }}</span>
+                                    {% else %}
+                                        --
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <a href="{{ url_for('export_hospital_csv', hospital_id=h.id) }}" 
+                                       class="btn btn-sm btn-success text-white" 
+                                       title="下載此醫院評論資料，可用 Excel 開啟">
+                                        <i class="fas fa-file-csv"></i> 下載
+                                    </a>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    </section>
+
+    <section id="healthPanel" class="platform-section" hidden>
+        <div class="module-head">
+            <div>
+                <h3 class="module-title"><i class="fas fa-heartbeat me-2 text-danger"></i>社區健康警示</h3>
+                <p class="module-kicker">從症狀查詢趨勢產生公告草稿，確認後發布全站健康提醒。</p>
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-12">
+            <div class="admin-card">
+                <div class="row g-4 align-items-start">
+                    <div class="col-lg-6 admin-split-left">
+                <div class="card-header-custom border-bottom pb-3 mb-3">
+                    <div>
+                        <h5 class="card-title text-danger mb-1">
+                            <i class="fas fa-heartbeat me-2"></i>社區健康警示雷達
+                        </h5>
+                        <small class="text-muted">透過 AI 拆解並統計民眾在「症狀分流」輸入的真實病徵。</small>
+                    </div>
+                    <button id="btn-analyze-trends" class="btn btn-outline-danger btn-sm fw-bold shadow-sm text-nowrap flex-shrink-0" onclick="generateTrendAnnouncement()">
+                        <i class="fas fa-magic me-1"></i>AI推測警示
+                    </button>
+                </div>
+                <div class="table-responsive symptom-rank-scroll">
+                    <table class="table table-hover align-middle">
+                        <thead class="table-light">
+                            <tr>
+                                <th width="15%">排名</th>
+                                <th width="40%">核心症狀</th>
+                                <th width="30%">搜尋次數</th>
+                                <th width="15%" class="text-end">操作</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for sym in top_symptoms %}
+                            <tr>
+                                <td>
+                                    {% if loop.index == 1 %}
+                                        <span class="badge bg-danger fs-6">第 1 名</span>
+                                    {% elif loop.index == 2 %}
+                                        <span class="badge bg-warning text-dark fs-6">第 2 名</span>
+                                    {% elif loop.index == 3 %}
+                                        <span class="badge bg-secondary fs-6">第 3 名</span>
+                                    {% else %}
+                                        <span class="text-muted fw-bold ms-2">{{ loop.index }}</span>
+                                    {% endif %}
+                                </td>
+                                <td><span class="fw-bold text-dark fs-5">{{ sym.symptom_text }}</span></td>
+                                <td>
+                                    <div class="d-flex align-items-center">
+                                        <span class="badge bg-primary rounded-pill me-2">{{ sym.count }} 次</span>
+                                    </div>
+                                </td>
+                                <td class="text-end">
+                                    <form action="{{ url_for('delete_symptom') }}" method="POST" style="display:inline;" onsubmit="return confirm('確定要刪除所有「{{ sym.symptom_text }}」的紀錄嗎？這會清除該症狀的統計數據喔！');">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                                        <input type="hidden" name="symptom_text" value="{{ sym.symptom_text }}"/>
+                                        <button type="submit" class="btn btn-sm btn-outline-danger" title="刪除此症狀紀錄">
+                                            <i class="fas fa-trash-alt"></i>
+                                        </button>
+                                    </form>
+                                </td>
+                            </tr>
+                            {% else %}
+                            <tr>
+                                <td colspan="4" class="text-center text-muted py-4">
+                                    <i class="fas fa-inbox fa-2x mb-2 opacity-50"></i><br>
+                                    目前還沒有收集到任何症狀數據喔！
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                    </div>
+
+                    <div class="col-lg-6 admin-split-right">
+                <div class="card-header-custom border-bottom pb-3 mb-3">
+                    <h5 class="card-title text-primary text-nowrap">
+                        <i class="fas fa-bullhorn me-2"></i>全站系統公告
+                    </h5>
+                    <small class="text-muted">發布的公告將以跑馬燈形式，顯示在所有前台頁面的最上方。</small>
+                </div>
+                
+                <form action="/admin/add_announcement" method="POST" class="d-flex mb-4" id="announcementForm">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                    <input type="text" name="content" class="form-control me-2" placeholder="輸入公告內容 (例如：近期流感好發，請配戴口罩)..." required>
+                    <button type="submit" class="btn btn-primary fw-bold px-4 shadow-sm text-nowrap flex-shrink-0">
+                        <i class="fas fa-paper-plane me-1"></i>發布
+                    </button>
+                </form>
+
+                <div id="trend-ai-result-box" class="alert alert-danger d-none mb-4 border-0 shadow-sm" style="background-color: #fff5f5;">
+                    <div class="d-flex justify-content-between align-items-start mb-2">
+                        <strong class="text-danger"><i class="fas fa-robot me-2"></i>AI 系統公告草稿建議：</strong>
+                        <button type="button" class="btn-close" onclick="document.getElementById('trend-ai-result-box').classList.add('d-none')"></button>
+                    </div>
+                    <div id="trend-ai-content" class="mb-3 text-dark fw-bold" style="line-height: 1.6; font-size: 1.1rem;"></div>
+                    <div class="text-end border-top pt-2 mt-2 border-danger border-opacity-25">
+                        <button type="button" class="btn btn-danger btn-sm rounded-pill px-3 shadow-sm" onclick="copyToAnnouncement()">
+                            <i class="fas fa-arrow-up me-1"></i>套用到上方公告輸入框
+                        </button>
+                    </div>
+                </div>
+
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle">
+                        <thead class="table-light">
+                            <tr>
+                                <th width="60%">公告內容</th>
+                                <th width="20%" class="text-center">狀態</th>
+                                <th width="20%" class="text-end">操作</th>
+                            </tr>
+                        </thead>
+                        <tbody id="announcementTableBody">
+                            {% for ann in announcements %}
+                            <tr data-announcement-row="{{ ann.id }}">
+                                <td class="fw-bold text-dark">{{ ann.content }}</td>
+                                <td class="text-center">
+                                    {% if ann.is_active == 1 %}
+                                        <span class="badge bg-success fs-6"><i class="fas fa-check-circle me-1"></i>顯示中</span>
+                                    {% else %}
+                                        <form action="/admin/toggle_announcement/{{ ann.id }}" method="POST" class="m-0 announcement-action-form">
+                                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                                            <button type="submit" class="btn btn-sm btn-outline-secondary rounded-pill">點擊啟用</button>
+                                        </form>
+                                    {% endif %}
+                                </td>
+                                <td class="text-end">
+                                    <form action="/admin/delete_announcement/{{ ann.id }}" method="POST" class="announcement-action-form" style="display:inline;" data-delete-confirm="確定要刪除這則公告嗎？">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                                        <button type="submit" class="btn btn-sm btn-outline-danger" title="刪除公告">
+                                            <i class="fas fa-trash-alt"></i>
+                                        </button>
+                                    </form>
+                                </td>
+                            </tr>
+                            {% else %}
+                            <tr>
+                                <td colspan="3" class="text-center text-muted py-4">
+                                    <i class="fas fa-clipboard-list fa-2x mb-2 opacity-50"></i><br>
+                                    目前沒有任何系統公告喔！
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                    </div>
+                </div>
+            </div> 
+        </div>
+    </div>
+    </section>
+
+    <section id="usersPanel" class="platform-section" hidden>
+        <div class="module-head">
+            <div>
+                <h3 class="module-title"><i class="fas fa-users me-2 text-primary"></i>會員權限</h3>
+                <p class="module-kicker">管理使用者清單與後台管理員權限。</p>
+            </div>
+        </div>
+    <div class="row g-4">
+        <div class="col-lg-4 order-lg-2">
+            <div class="admin-card">
+                <div class="card-header-custom">
+                    <h5 class="card-title"><i class="fas fa-user-shield me-2"></i>管理員</h5>
+                    <span class="badge bg-primary">後台權限</span>
+                </div>
+                <div class="table-responsive" style="max-height: 560px; overflow-y: auto;">
+                    <table class="table table-hover align-middle">
+                        <thead>
+                            <tr>
+                                <th>帳號</th>
+                                <th class="text-end">操作</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for user in users %}
+                            {% if user[3] == 'admin' or user[2] == 1 %}
+                            <tr>
+                                <td>
+                                    <div class="fw-bold text-dark">{{ user[1] }}</div>
+                                    {% if user[0] == current_user.id %}<div class="small text-muted">目前帳號</div>{% endif %}
+                                </td>
+                                <td class="text-end">
+                                    {% if user[0] != current_user.id %}
+                                    <form action="{{ url_for('toggle_admin', user_id=user[0]) }}" method="POST" class="d-inline">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                                        <button type="submit" class="btn btn-sm btn-outline-secondary" title="降級為一般會員" onclick="return confirm('確定要取消他的管理員權限嗎？')">
+                                            <i class="fas fa-arrow-down"></i>
+                                        </button>
+                                    </form>
+                                    {% else %}
+                                    <span class="text-muted small">不可變更</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endif %}
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4 order-lg-3">
+            <div class="admin-card">
+                <div class="card-header-custom">
+                    <h5 class="card-title"><i class="fas fa-user me-2"></i>一般會員</h5>
+                    <span class="badge bg-secondary">一般帳號</span>
+                </div>
+                <div class="table-responsive" style="max-height: 560px; overflow-y: auto;">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th width="12%">序號</th>
+                                <th width="42%">帳號</th>
+                                <th width="22%">身分</th>
+                                <th width="24%">操作</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for user in users %}
+                            {% if user[3] == 'user' and user[2] != 1 %}
+                            <tr>
+                                <td class="text-muted align-middle">{{ loop.index }}</td>
+                                <td class="align-middle">
+                                    <div class="fw-bold text-dark">{{ user[1] }}</div>
+                                </td>
+                                <td class="align-middle">
+                                    <span class="badge bg-light text-dark border">一般會員</span>
+                                </td>
+                                <td class="align-middle">
+                                    {% if user[0] != current_user.id %}
+                                        <form action="{{ url_for('toggle_admin', user_id=user[0]) }}" method="POST" class="d-inline">
+                                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                                            {% if user[2] == 1 %}
+                                                <button type="submit" class="btn btn-sm btn-outline-secondary" title="降級為一般會員" onclick="return confirm('確定要取消他的管理員權限嗎？')">
+                                                    <i class="fas fa-arrow-down"></i>
+                                                </button>
+                                            {% else %}
+                                                <button type="submit" class="btn btn-sm btn-outline-primary" title="升級為管理員" onclick="return confirm('確定要將他升級為管理員嗎？')">
+                                                    <i class="fas fa-arrow-up"></i>
+                                                </button>
+                                            {% endif %}
+                                        </form>
+                                    {% else %}
+                                        <span class="text-muted small">目前帳號</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endif %}
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-12 order-lg-1">
+            <div class="admin-card">
+                <div class="card-header-custom">
+                    <div>
+                        <h5 class="card-title"><i class="fas fa-hospital-user me-2"></i>醫院帳號審核</h5>
+                        <div class="small text-muted mt-1">醫院帳號只能綁定院方資料，不提供升級管理員操作。</div>
+                    </div>
+                    <button type="button" class="btn btn-sm btn-outline-secondary fw-bold text-nowrap flex-shrink-0" data-bs-toggle="modal" data-bs-target="#hospitalHistoryModal">
+                        <i class="fas fa-clock-rotate-left me-1"></i>歷史紀錄
+                    </button>
+                </div>
+
+                <div class="mb-3">
+                    <div class="input-group mb-2">
+                        <span class="input-group-text bg-white"><i class="fas fa-search text-muted"></i></span>
+                        <input type="search" id="hospitalUserSearchInput" class="form-control" placeholder="搜尋帳號、醫院、聯絡人或電子信箱">
+                    </div>
+                </div>
+
+                <div class="hospital-review-board d-grid gap-2" id="hospitalUserList">
+                    {% set hospital_users = namespace(has_items=false) %}
+                    {% for user in users %}
+                    {% if user[3] == 'hospital' and user[4] == 'pending' %}
+                    {% set hospital_users.has_items = true %}
+                    <div class="task-item d-flex align-items-center" data-hospital-user-card data-status="{{ user[4] }}" data-search-text="{{ (user[1] ~ ' ' ~ (user[10] or '') ~ ' ' ~ (user[11] or '') ~ ' ' ~ (user[7] or '') ~ ' ' ~ (user[6] or ''))|e }}">
+    
+                        <span class="task-icon {% if user[4] == 'pending' %}text-warning{% elif user[4] == 'approved' %}text-success{% else %}text-secondary{% endif %} me-3">
+                            <i class="fas {% if user[4] == 'pending' %}fa-hourglass-half{% elif user[4] == 'approved' %}fa-circle-check{% else %}fa-circle-xmark{% endif %}"></i>
+                        </span>
+                        
+                        <div class="flex-grow-1">
+                            <div class="fw-bold text-dark">{{ user[1] }}</div>
+                            <div class="small text-muted">
+                                申請：{{ user[11] or '未選擇' }} · 綁定：{{ user[10] or user[11] or '尚未綁定' }}
+                            </div>
+                            <div class="small text-muted">{{ user[7] or '未填聯絡人' }} · {{ user[6] or '未填電子信箱' }}</div>
+                        </div>
+                        
+                        <div class="d-flex align-items-center gap-3 ms-3 flex-shrink-0">
+                            <span class="badge {% if user[4] == 'pending' %}text-bg-warning{% elif user[4] == 'approved' %}text-bg-success{% else %}text-bg-secondary{% endif %}" style="width: 65px; text-align: center;">
+                                {% if user[4] == 'pending' %}待審核{% elif user[4] == 'approved' %}已核准{% else %}已退回{% endif %}
+                            </span>
+                            <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#hospitalUserModal{{ user[0] }}">
+                                查看
+                            </button>
+                        </div>
+                    
+                    </div>
+                    {% endif %}
+                    {% endfor %}
+                    {% if not hospital_users.has_items %}
+                    <div id="hospitalUserInitialEmptyState" class="empty-state py-4">目前沒有待審核的醫院帳號</div>
+                    {% endif %}
+                </div>
+                <div id="hospitalUserEmptyState" class="empty-state py-4 d-none">沒有符合條件的待審核醫院帳號</div>
+
+                {% for user in users %}
+                {% if user[3] == 'hospital' %}
+                <div class="modal fade" id="hospitalUserModal{{ user[0] }}" tabindex="-1" aria-hidden="true">
+                    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h5 class="modal-title fw-bold">醫院帳號詳細資料：{{ user[1] }}</h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                            </div>
+                            <div class="modal-body">
+                                <div class="row g-3 mb-3">
+                                    <div class="col-md-6"><div class="small text-muted">申請醫院</div><div class="fw-bold">{{ user[11] or '未選擇' }}</div></div>
+                                    <div class="col-md-6"><div class="small text-muted">目前綁定</div><div class="fw-bold">{{ user[10] or user[11] or '尚未綁定' }}</div></div>
+                                    <div class="col-md-6"><div class="small text-muted">聯絡人 / 職稱</div><div>{{ user[7] or '未填' }}</div></div>
+                                    <div class="col-md-6"><div class="small text-muted">官方電子信箱</div><div>{{ user[6] or '未填' }}</div></div>
+                                    <div class="col-md-6"><div class="small text-muted">電話 / 分機</div><div>{{ user[8] or '未填' }}</div></div>
+                                    <div class="col-md-6"><div class="small text-muted">醫事機構代碼</div><div>{{ user[9] or '未填' }}</div></div>
+                                    
+                                    <div class="col-md-6">
+                                        <div class="small text-muted">院方證明文件</div>
+                                        {% if user[13] %}
+                                            <a href="{{ url_for('static', filename='uploads/proofs/' ~ user[13]) }}" target="_blank" class="btn btn-sm btn-info text-white mt-1 fw-bold">
+                                                <i class="fas fa-image me-1"></i>點我查看證明文件
+                                            </a>
+                                        {% else %}
+                                            <div class="text-danger small fw-bold mt-1"><i class="fas fa-exclamation-circle me-1"></i>此帳號未上傳文件</div>
+                                        {% endif %}
+                                    </div>
+
+                                    {% if user[4] == 'rejected' %}
+                                    <div class="col-12"><div class="alert alert-danger border-0 mb-0"><strong>退回原因：</strong>{{ user[12] or '未填原因' }}</div></div>
+                                    {% endif %}
+                                </div>
+
+                                {% if user[4] == 'pending' %}
+                                <div class="row g-3">
+                                    <div class="col-md-6">
+                                        <form action="{{ url_for('update_user_role', user_id=user[0]) }}" method="POST" class="border rounded p-3 h-100 bg-light">
+                                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                                            <input type="hidden" name="role" value="hospital"/>
+                                            <input type="hidden" name="review_action" value="approve"/>
+                                            {% if user[5] %}
+                                            <input type="hidden" name="hospital_id" value="{{ user[5] }}"/>
+                                            {% endif %}
+                                            <div class="fw-bold text-success mb-2"><i class="fas fa-circle-check me-1"></i>通過申請</div>
+                                            <label class="form-label small text-muted">備註（選填）</label>
+                                            <input type="text" name="admin_note" class="form-control mb-3" placeholder="例如：資料完整，核准綁定">
+                                            <button type="submit" class="btn btn-success w-100 fw-bold" onclick="return confirm('確定通過這個醫院帳號申請嗎？');">
+                                                <i class="fas fa-check me-1"></i>通過
+                                            </button>
+                                        </form>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <form action="{{ url_for('update_user_role', user_id=user[0]) }}" method="POST" class="border rounded p-3 h-100 bg-white">
+                                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                                            <input type="hidden" name="role" value="hospital"/>
+                                            <input type="hidden" name="review_action" value="reject"/>
+                                            <div class="fw-bold text-danger mb-2"><i class="fas fa-circle-xmark me-1"></i>退回申請</div>
+                                            <label class="form-label small text-muted">退回原因（必填）</label>
+                                            <select name="rejection_reason" class="form-select mb-2" required>
+                                                <option value="" disabled selected>選擇常用退回原因</option>
+                                                <option value="官方電子信箱不符">官方電子信箱不符</option>
+                                                <option value="院方證明文件不足或無法辨識">院方證明文件不足或無法辨識</option>
+                                                <option value="申請醫院名稱與院方資料不符">申請醫院名稱與院方資料不符</option>
+                                                <option value="找不到此醫院資料">找不到此醫院資料</option>
+                                                <option value="聯絡資訊不足">聯絡資訊不足</option>
+                                                <option value="疑似非院方人員申請">疑似非院方人員申請</option>
+                                                <option value="其他">其他</option>
+                                            </select>
+                                            <input type="text" name="custom_rejection_reason" class="form-control mb-3" placeholder="選其他時請填寫原因">
+                                            <button type="submit" class="btn btn-outline-danger w-100 fw-bold" onclick="return confirm('確定退回這個醫院帳號申請嗎？');">
+                                                <i class="fas fa-xmark me-1"></i>退回
+                                            </button>
+                                        </form>
+                                    </div>
+                                </div>
+                                {% else %}
+                                <div class="alert alert-light border mb-0">
+                                    <div class="fw-bold text-dark">
+                                        {% if user[4] == 'approved' %}此醫院帳號已核准{% else %}此醫院帳號已退回{% endif %}
+                                    </div>
+                                    <div class="small text-muted">若需要變更狀態，請由歷史紀錄與資料庫紀錄確認後再處理。</div>
+                                </div>
+                                {% endif %}
+                            </div>
+                            <div class="modal-footer justify-content-between">
+                                <form action="{{ url_for('delete_user', user_id=user[0]) }}" method="POST" onsubmit="return confirm('確定要刪除這個醫院帳號嗎？此操作無法復原。');">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                                    <button type="submit" class="btn btn-outline-danger">
+                                        <i class="fas fa-trash me-1"></i>刪除醫院帳號
+                                    </button>
+                                </form>
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">關閉</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+                {% endfor %}
+            </div>
+        </div>
+
+        <div class="col-lg-4 order-lg-4">
+            <div class="admin-card">
+                <div class="card-header-custom">
+                    <h5 class="card-title"><i class="fas fa-hospital-user me-2"></i>醫院帳號</h5>
+                    <span class="badge bg-success">已核准</span>
+                </div>
+                <div class="hospital-review-board d-grid gap-2">
+                    {% set approved_hospital_users = namespace(has_items=false) %}
+                    {% for user in users %}
+                    {% if user[3] == 'hospital' and user[4] == 'approved' %}
+                    {% set approved_hospital_users.has_items = true %}
+                    <div class="task-item d-flex align-items-center">
+                        <span class="task-icon text-success me-3">
+                            <i class="fas fa-circle-check"></i>
+                        </span>
+                        <div class="flex-grow-1 min-width-0">
+                            <div class="fw-bold text-dark">{{ user[1] }}</div>
+                            <div class="small text-muted">綁定：{{ user[10] or user[11] or '尚未綁定' }}</div>
+                            <div class="small text-muted">{{ user[7] or '未填聯絡人' }} · {{ user[6] or '未填電子信箱' }}</div>
+                        </div>
+                        <button type="button" class="btn btn-sm btn-outline-primary ms-3 flex-shrink-0" data-bs-toggle="modal" data-bs-target="#hospitalUserModal{{ user[0] }}">
+                            查看
+                        </button>
+                    </div>
+                    {% endif %}
+                    {% endfor %}
+                    {% if not approved_hospital_users.has_items %}
+                    <div class="empty-state py-4">目前沒有已核准的醫院帳號</div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+	    </div>
+	    </section>
+        </main>
+    </div>
+</div>
+
+<div class="modal fade" id="batchJobsModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title fw-bold"><i class="fas fa-clock-rotate-left me-2 text-primary"></i>批次任務紀錄</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="關閉"></button>
+            </div>
+            <div class="modal-body">
+                <div id="batchJobsList" class="small text-muted">讀取中...</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="batchSchedulesModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title fw-bold"><i class="fas fa-calendar-check me-2 text-primary"></i>自動排程爬蟲</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="關閉"></button>
+            </div>
+            <div class="modal-body">
+                <form id="batchScheduleForm" class="border rounded p-3 bg-light mb-3">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                    <div class="row g-2 align-items-end">
+                        <div class="col-md-4">
+                            <label class="form-label small fw-bold">排程名稱</label>
+                            <input type="text" name="name" class="form-control" value="自動排程爬蟲">
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label small fw-bold">頻率</label>
+                            <select name="frequency" class="form-select">
+                                <option value="daily">每天</option>
+                                <option value="weekly">每週</option>
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label small fw-bold">執行時間</label>
+                            <input type="time" name="run_time" class="form-control" value="02:00">
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label small fw-bold">從第幾家開始</label>
+                            <input type="number" name="next_start_index" class="form-control" value="1" min="1">
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label small fw-bold">醫院數</label>
+                            <input type="number" name="hospital_count" class="form-control" value="10" min="1" max="300">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label small fw-bold">每家評論數</label>
+                            <input type="number" name="max_reviews" class="form-control" value="30" min="1" max="200">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label small fw-bold">每幾家休息</label>
+                            <input type="number" name="rest_every" class="form-control" value="5" min="1" max="100">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label small fw-bold">休息秒數</label>
+                            <input type="number" name="rest_seconds" class="form-control" value="20" min="0" max="600">
+                        </div>
+                        <div class="col-md-3">
+                            <button type="submit" class="btn btn-primary w-100 fw-bold">
+                                <i class="fas fa-plus me-1"></i>新增排程
+                            </button>
+                        </div>
+                    </div>
+                    <div id="batchScheduleFormStatus" class="small text-muted mt-2"></div>
+                </form>
+                <div id="batchSchedulesList" class="small text-muted">讀取中...</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="riskHospitalModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title fw-bold" id="riskHospitalTitle">高風險醫院提醒</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div id="riskHospitalLoading" class="text-center py-5">
+                    <div class="spinner-border text-danger" role="status"></div>
+                    <p class="mt-2 text-muted">正在讀取醫院帳號資料...</p>
+                </div>
+                <div id="riskHospitalContent" class="d-none"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">關閉</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="reviewModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title fw-bold" id="reviewModalTitle">醫院評論詳情</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div id="loadingSpinner" class="text-center py-5">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <p class="mt-2 text-muted">正在載入評論資料...</p>
+                </div>
+                
+                <div id="reviewListContent" class="d-none">
+                    <div class="d-flex justify-content-end mb-3">
+                        <a id="hospitalProfileLink" class="btn btn-outline-primary btn-sm" href="#">
+                            <i class="fas fa-file-lines me-1"></i>查看醫院檔案
+                        </a>
+                    </div>
+                    <div id="hospitalIssueSummary" class="mb-4 d-none"></div>
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th width="50%">內容</th>
+                                <th width="15%">情緒</th>
+                                <th width="15%">負評原因</th>
+                                <th width="12%">時間</th>
+                                <th width="10%">操作</th>
+                            </tr>
+                        </thead>
+                        <tbody id="reviewTableBody">
+                            </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">關閉</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="backupStatusModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title fw-bold"><i class="fas fa-database me-2 text-warning"></i>資料庫備份狀態</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div id="backupStatusContent" class="d-grid gap-2">
+                    <div class="text-muted text-center py-3">尚未載入備份資訊</div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <a href="{{ url_for('backup_db') }}" class="btn btn-warning fw-bold" onclick="return confirm('確定要下載系統資料庫 (.db) 進行備份嗎？\n\n注意：此檔案包含所有會員與醫院評論資料。');">
+                    <i class="fas fa-download me-1"></i>下載備份
+                </a>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">關閉</button>
+            </div>
+        </div>
+    </div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+<script>
+    // ==========================================
+    // 🛠️ 後台主控：儀表板載入、會員審核、公告與批次爬蟲互動
+    // ==========================================
+    let dashboardLoaded = false;
+    let sentimentChartInstance = null;
+    let trendChartInstance = null;
+    let crawlerRunChartInstance = null;
+    let latestDashboardData = null;
+    const csrfToken = "{{ csrf_token() }}";
+
+    function fmt(value) {
+        return Number(value || 0).toLocaleString('zh-TW');
+    }
+
+    function escapeHTML(str) {
+        if (!str) return '';
+        return String(str).replace(/[&<>'"]/g, tag => ({
+            '&': '&amp;',
+            '<': '&lt;',
+            '>': '&gt;',
+            "'": '&#39;',
+            '"': '&quot;'
+        }[tag] || tag));
+    }
+
+    function renderDashboardIssues(issues) {
+        const box = document.getElementById('issueList');
+        if (!issues || issues.length === 0) {
+            box.innerHTML = '<div class="text-muted text-center py-5">目前尚無負評原因資料</div>';
+            return;
+        }
+
+        const maxCount = issues[0].count || 1;
+        box.innerHTML = issues.map(item => {
+            const width = Math.max(Math.round(item.count / maxCount * 100), 5);
+            return `
+                <div class="row-item issue-grid">
+                    <div class="fw-bold">${escapeHTML(item.issue_category)}</div>
+                    <div class="mini-bar"><span class="bg-danger" style="width: ${width}%"></span></div>
+                    <div class="text-end fw-bold text-danger">${fmt(item.count)}</div>
+                </div>
+            `;
+        }).join('');
+    }
+
+    function renderRiskHospitals(hospitals) {
+        const box = document.getElementById('riskHospitals');
+        if (!hospitals || hospitals.length === 0) {
+            box.innerHTML = '<div class="text-muted text-center py-5">目前沒有達到風險條件的醫院</div>';
+            return;
+        }
+
+        box.innerHTML = `
+            <div class="d-flex justify-content-between align-items-center gap-2 flex-wrap mb-3">
+                <div class="small text-muted">共 ${fmt(hospitals.length)} 家需要追蹤</div>
+                <button type="button" class="btn btn-sm btn-danger fw-bold" id="sendAllRiskNoticesButton" onclick="sendAllRiskNotices()">
+                    <i class="fas fa-paper-plane me-1"></i>一鍵發送給已綁定院方
+                </button>
+            </div>
+        ` + hospitals.map(h => `
+            <button type="button" class="row-item w-100 text-start border-0 bg-transparent" onclick="openRiskHospitalModal(${h.id})">
+                <div class="d-flex justify-content-between gap-3">
+                    <div>
+                        <span class="fw-bold text-primary">${escapeHTML(h.name)}</span>
+                        <div class="small text-muted">${fmt(h.review_count)} 則評論 · ${fmt(h.negative_count)} 則負評</div>
+                    </div>
+                    <span class="badge text-bg-danger align-self-start">${h.negative_rate}%</span>
+                </div>
+                <div class="mini-bar mt-2"><span class="bg-danger" style="width: ${Math.max(h.negative_rate, 5)}%"></span></div>
+            </button>
+        `).join('');
+    }
+
+    async function sendAllRiskNotices() {
+        if (!confirm('確定要發送提醒給所有已核准綁定的高風險醫院院方帳號嗎？')) return;
+        const button = document.getElementById('sendAllRiskNoticesButton');
+        if (button) {
+            button.disabled = true;
+            button.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>發送中';
+        }
+        try {
+            const response = await fetch('/admin/send_all_risk_notices', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
+                body: JSON.stringify({})
+            });
+            const data = await response.json();
+            if (!response.ok || data.error) throw new Error(data.error || '一鍵發送失敗');
+            const skipped = (data.skipped_hospitals || []).length
+                ? `\n未發送：${data.skipped_hospitals.join('、')} 尚無已核准院方帳號。`
+                : '';
+            alert(`${data.message || '提醒已發送'}${skipped}`);
+            if (button) {
+                button.classList.remove('btn-danger');
+                button.classList.add('btn-success');
+                button.innerHTML = '<i class="fas fa-check me-1"></i>已發送';
+            }
+        } catch (err) {
+            alert(err.message);
+            if (button) {
+                button.disabled = false;
+                button.innerHTML = '<i class="fas fa-paper-plane me-1"></i>一鍵發送給已綁定院方';
+            }
+        }
+    }
+
+    const riskHospitalModal = new bootstrap.Modal(document.getElementById('riskHospitalModal'));
+    const riskHospitalTitle = document.getElementById('riskHospitalTitle');
+    const riskHospitalLoading = document.getElementById('riskHospitalLoading');
+    const riskHospitalContent = document.getElementById('riskHospitalContent');
+
+    async function openRiskHospitalModal(hospitalId) {
+        riskHospitalTitle.textContent = '高風險醫院提醒';
+        riskHospitalContent.classList.add('d-none');
+        riskHospitalContent.innerHTML = '';
+        riskHospitalLoading.classList.remove('d-none');
+        riskHospitalModal.show();
+
+        try {
+            const response = await fetch(`/admin/risk_hospital/${hospitalId}`);
+            const data = await response.json();
+            if (!response.ok || data.error) throw new Error(data.error || '讀取失敗');
+
+            riskHospitalTitle.textContent = `${data.hospital.name} - 院方帳號狀態`;
+            const accounts = data.accounts || [];
+            const accountStatusLabels = { pending: '待審核', approved: '已核准', rejected: '已退回' };
+            const accountOptions = accounts.map(account => `
+                <option value="${account.id}">
+                    ${escapeHTML(account.username)}（${accountStatusLabels[account.approval_status] || '狀態未明'}）
+                </option>
+            `).join('');
+            const accountRows = accounts.length
+                ? accounts.map(account => `
+                    <div class="border rounded p-2 mb-2">
+                        <div class="fw-bold">${escapeHTML(account.username)}</div>
+                        <div class="small text-muted">${escapeHTML(account.contact_name || '未填聯絡人')} · ${escapeHTML(account.official_email || '未填電子信箱')}</div>
+                    </div>
+                `).join('')
+                : '<div class="alert alert-warning mb-0">這間醫院目前沒有已綁定的院方帳號，暫時無法發送站內提醒。</div>';
+            const defaultMessage = `${data.hospital.name} 近期負評比例為 ${data.stats.negative_rate}%，共 ${fmt(data.stats.negative_count)} 則負評。建議儘速檢視主要負評原因，並追蹤掛號流程、等候時間、醫護溝通與服務態度等項目。`;
+            const historyRows = (data.notifications || []).length
+                ? data.notifications.map(item => `
+                    <div class="small border-start border-3 border-danger ps-2 mb-2">
+                        <div class="fw-bold">${escapeHTML(item.title)}</div>
+                        <div class="text-muted">${escapeHTML(item.content)}</div>
+                        <div class="text-muted">${escapeHTML(item.created_at)}</div>
+                    </div>
+                `).join('')
+                : '<div class="small text-muted">尚未發送過提醒。</div>';
+
+            riskHospitalContent.innerHTML = `
+                <div class="alert alert-danger border-0">
+                    負評比例 <strong>${data.stats.negative_rate}%</strong>，${fmt(data.stats.negative_count)} / ${fmt(data.stats.total)} 則評論為負評。
+                </div>
+                <h6 class="fw-bold">院方帳號</h6>
+                <div class="mb-3">${accountRows}</div>
+                <h6 class="fw-bold">發送提醒</h6>
+                <form id="riskNoticeForm" class="d-grid gap-2">
+                    <select name="user_id" class="form-select" ${accounts.length ? '' : 'disabled'}>
+                        ${accountOptions || '<option value="">沒有可通知帳號</option>'}
+                    </select>
+                    <textarea name="content" class="form-control" rows="4" ${accounts.length ? '' : 'disabled'}>${escapeHTML(defaultMessage)}</textarea>
+                    <button type="submit" class="btn btn-danger fw-bold" ${accounts.length ? '' : 'disabled'}>
+                        <i class="fas fa-paper-plane me-1"></i>發送院方提醒
+                    </button>
+                </form>
+                <h6 class="fw-bold mt-4">最近提醒紀錄</h6>
+                ${historyRows}
+            `;
+
+            document.getElementById('riskNoticeForm')?.addEventListener('submit', event => {
+                event.preventDefault();
+                sendRiskNotice(hospitalId, event.currentTarget);
+            });
+        } catch (err) {
+            riskHospitalContent.innerHTML = `<div class="alert alert-danger">${escapeHTML(err.message)}</div>`;
+        } finally {
+            riskHospitalLoading.classList.add('d-none');
+            riskHospitalContent.classList.remove('d-none');
+        }
+    }
+
+    async function sendRiskNotice(hospitalId, form) {
+        const button = form.querySelector('button[type="submit"]');
+        button.disabled = true;
+        try {
+            const response = await fetch(`/admin/send_risk_notice/${hospitalId}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
+                body: JSON.stringify({
+                    user_id: form.user_id.value,
+                    content: form.content.value
+                })
+            });
+            const data = await response.json();
+            if (!response.ok || data.error) throw new Error(data.error || '發送失敗');
+            button.classList.remove('btn-danger');
+            button.classList.add('btn-success');
+            button.innerHTML = '<i class="fas fa-check me-1"></i>已發送';
+            setTimeout(() => openRiskHospitalModal(hospitalId), 700);
+        } catch (err) {
+            alert(err.message);
+            button.disabled = false;
+        }
+    }
+
+    function renderRecentHospitals(hospitals) {
+        const box = document.getElementById('recentHospitals');
+        if (!hospitals || hospitals.length === 0) {
+            box.innerHTML = '<div class="text-muted text-center py-4">目前尚無醫院資料</div>';
+            return;
+        }
+
+        box.innerHTML = hospitals.map(h => `
+            <div class="row-item">
+                <div class="d-flex justify-content-between gap-3">
+                    <div>
+                        <a class="fw-bold text-decoration-none" href="/hospital/${h.id}">${escapeHTML(h.name)}</a>
+                        <div class="small text-muted">${escapeHTML(h.last_activity || '--')} · ${fmt(h.review_count)} 則評論</div>
+                    </div>
+                    <span class="badge bg-success-subtle text-success border border-success-subtle align-self-start">${h.positive_rate}% 正評</span>
+                </div>
+            </div>
+        `).join('');
+    }
+
+    function renderSystemStatus(status) {
+        const box = document.getElementById('systemStatus');
+        const usage = status.gemini_usage || {};
+        const localUsage = status.local_ai_usage || {};
+        const remaining = usage.estimated_remaining_today === null || usage.estimated_remaining_today === undefined
+            ? '未設定每日上限'
+            : `${fmt(usage.estimated_remaining_today)} 次`;
+        const modelUsage = (usage.model_usage_today || []).length
+            ? usage.model_usage_today.map(item => `${escapeHTML(item.model)}：${fmt(item.count)} 次`).join('<br>')
+            : '今日尚無成功呼叫';
+        const localFeatureUsage = (localUsage.feature_usage_today || []).length
+            ? localUsage.feature_usage_today.map(item => `${escapeHTML(item.feature)}：${fmt(item.count)} 次`).join('<br>')
+            : '今日尚無本地端執行';
+        const fallbackText = usage.fallback_enabled
+            ? `已啟用，依序嘗試：${escapeHTML((usage.models || []).join('、'))}`
+            : '未啟用，請在 GOOGLE_GEMINI_MODELS 設定多個模型';
+        const blockedModels = usage.blocked_models || {};
+        const blockedModelNames = Object.keys(blockedModels);
+        const blockedModelText = blockedModelNames.length
+            ? blockedModelNames.map(model => {
+                const blocked = blockedModels[model] || {};
+                return `${escapeHTML(model)}：恢復時間 ${escapeHTML(blocked.blocked_until || '--')}`;
+            }).join('<br>')
+            : '目前沒有被暫停嘗試的模型';
+        const aiMode = status.ai_summary_mode || 'auto';
+        const aiModeLabels = {
+            auto: '自動：Gemini 優先，失敗時改用本地端',
+            gemini: 'Gemini 優先',
+            local: '只用本地端統計'
+        };
+        const aiModeDescriptions = {
+            auto: '平常先用 Gemini；遇到額度、API 或伺服器錯誤時，自動改用本地端統計。',
+            gemini: '優先呼叫 Gemini；若呼叫失敗，部分功能仍會以本地端備援避免中斷。',
+            local: '完全不主動呼叫 Gemini，評論懶人包、PK 分析與症狀公告都走本地端規則。'
+        };
+
+        box.innerHTML = `
+            <button type="button" class="status-row" onclick="toggleStatusDetail('sentimentDetail')">
+                <span><span class="status-dot ${status.sentiment_model ? 'status-ok' : 'status-bad'}"></span>情感分析模型</span>
+                <span class="fw-bold ${status.sentiment_model ? 'text-success' : 'text-danger'}">${status.sentiment_model ? '正常' : '未載入'}</span>
+            </button>
+            <div id="sentimentDetail" class="status-detail d-none">
+                <div class="fw-bold mb-1">模型：${escapeHTML(status.sentiment_model_name || '--')}</div>
+                <div class="text-muted">這是本機載入的 Transformers 情感分析模型；可能因套件缺失、模型下載失敗、記憶體不足或啟動時載入失敗而故障。</div>
+                <a href="{{ url_for('sentiment_audit_list') }}" class="btn btn-sm btn-outline-primary fw-bold mt-3">
+                    <i class="fas fa-clipboard-check me-1"></i>前往人工抽驗
+                </a>
+            </div>
+
+            <button type="button" class="status-row" onclick="toggleStatusDetail('geminiDetail')">
+                <span><span class="status-dot ${status.gemini_configured ? 'status-ok' : 'status-bad'}"></span>Gemini API 設定</span>
+                <span class="fw-bold ${status.gemini_configured ? 'text-success' : 'text-danger'}">${status.gemini_configured ? '正常' : '未啟用'}</span>
+            </button>
+            <div id="geminiDetail" class="status-detail d-none">
+                <div class="ai-mode-control">
+                    <div class="d-flex justify-content-between align-items-start gap-3 flex-wrap">
+                        <div>
+                            <div class="fw-bold">全站 AI 模式</div>
+                            <div class="text-muted small" id="aiModeDescription">${escapeHTML(aiModeDescriptions[aiMode] || aiModeDescriptions.auto)}</div>
+                        </div>
+                        <span class="badge text-bg-primary" id="aiModeBadge">${escapeHTML(aiModeLabels[aiMode] || aiModeLabels.auto)}</span>
+                    </div>
+                    <div class="ai-mode-buttons" id="aiModeButtons">
+                        ${['auto', 'gemini', 'local'].map(mode => `
+                            <button type="button"
+                                    class="ai-mode-btn ${aiMode === mode ? 'active' : ''}"
+                                    data-ai-mode="${mode}"
+                                    onclick="setAiSummaryMode('${mode}')">
+                                ${mode === 'auto' ? '自動' : mode === 'gemini' ? 'Gemini' : '本地端'}
+                            </button>
+                        `).join('')}
+                    </div>
+                    <div id="aiModeStatus" class="small text-muted mt-2"></div>
+                </div>
+                <div><strong>目前模型：</strong>${escapeHTML(usage.active_model || '--')}</div>
+                <div><strong>今日成功呼叫：</strong>${fmt(usage.today_used)} 次</div>
+                <div><strong>本月成功呼叫：</strong>${fmt(usage.month_used)} 次</div>
+                <div><strong>估算今日剩餘：</strong>${remaining}</div>
+                <div><strong>今日模型使用：</strong><br>${modelUsage}</div>
+                <div><strong>模型備援：</strong>${fallbackText}</div>
+                <div><strong>今日已跳過模型：</strong><br>${blockedModelText}</div>
+                <hr>
+                <div><strong>本地端今日執行：</strong>${fmt(localUsage.today_used)} 次</div>
+                <div><strong>本地端本月執行：</strong>${fmt(localUsage.month_used)} 次</div>
+                <div><strong>本地端功能使用：</strong><br>${localFeatureUsage}</div>
+                <div class="text-muted mt-2">此紀錄是系統本機紀錄與估算。</div>
+            </div>
+
+            <button type="button" class="status-row" onclick="toggleStatusDetail('databaseDetail')">
+                <span><span class="status-dot ${status.database_size_mb >= 20 ? 'status-warn' : 'status-ok'}"></span>資料庫大小</span>
+                <span class="fw-bold ${status.database_size_mb >= 20 ? 'text-warning' : 'text-success'}">${status.database_size_mb} MB</span>
+            </button>
+            <div id="databaseDetail" class="status-detail d-none">
+                ${(() => {
+                    const history = status.backup_history || [];
+                    const lastBackup = status.last_backup || history[0] || null;
+                    const rows = history.length
+                        ? history.slice(0, 5).map(item => `<div>${escapeHTML(item.created_at || '--')}：${escapeHTML(item.file_size_mb ?? '--')} MB（${escapeHTML(item.actor_username || '管理員')}）</div>`).join('')
+                        : '<div class="text-muted">目前沒有備份紀錄，按「備份資料庫」下載後會自動建立紀錄。</div>';
+                    return `
+                        <div><strong>目前資料庫大小：</strong>${escapeHTML(status.database_size_mb ?? '--')} MB</div>
+                        <div><strong>上次備份：</strong>${lastBackup ? `${escapeHTML(lastBackup.created_at)}，${escapeHTML(lastBackup.file_size_mb)} MB` : '尚未備份'}</div>
+                        <div class="mt-2"><strong>備份歷史：</strong>${rows}</div>
+                        <button type="button" class="btn btn-sm btn-outline-warning mt-2 fw-bold" onclick="openBackupStatus()">查看完整備份狀態</button>
+                    `;
+                })()}
+            </div>
+        `;
+    }
+
+    function renderTodayCrawlerSummary(summary) {
+        const box = document.getElementById('todayCrawlerSummary');
+        const latest = document.getElementById('todayCrawlerLatest');
+        const data = summary || {};
+        const total = data.total || 0;
+        const general = data.general || 0;
+        const batch = data.batch || 0;
+        const issues = data.batch_failed || data.issues || 0;
+
+        if (latest) {
+            latest.textContent = `最新執行：${data.latest_run_at || '--'}`;
+        }
+
+        if (!box) return;
+        box.innerHTML = `
+            <div class="crawl-summary-card primary">
+                <div class="crawl-summary-label">全部執行</div>
+                <div class="crawl-summary-value">${fmt(total)}</div>
+                <div class="crawl-summary-note">今日累計次數</div>
+            </div>
+            <div class="crawl-summary-card">
+                <div class="crawl-summary-label">一般搜尋</div>
+                <div class="crawl-summary-value">${fmt(general)}</div>
+                <div class="crawl-summary-note">使用者查詢醫院</div>
+            </div>
+            <div class="crawl-summary-card">
+                <div class="crawl-summary-label">批次爬蟲</div>
+                <div class="crawl-summary-value">${fmt(batch)}</div>
+                <div class="crawl-summary-note">批次任務成功</div>
+            </div>
+            <div class="crawl-summary-card ${issues ? 'danger' : ''}">
+                <div class="crawl-summary-label">異常</div>
+                <div class="crawl-summary-value">${fmt(issues)}</div>
+                <div class="crawl-summary-note">${issues ? '需檢查重爬' : '目前正常'}</div>
+            </div>
+        `;
+    }
+
+    function renderReviewMonitorSummary(data) {
+        const latestHospital = (data.recent_hospitals || [])[0] || {};
+        const latestTime = latestHospital.last_activity || '--';
+        const items = {
+            reviewMonitorTodayNegative: fmt(data.today_negative_reviews),
+            reviewMonitorRiskCount: fmt((data.risk_hospitals || []).length),
+            reviewMonitorNegativeRate: `${data.negative_rate || 0}%`,
+            reviewMonitorLatestUpdate: latestTime
+        };
+
+        Object.entries(items).forEach(([id, value]) => {
+            const el = document.getElementById(id);
+            if (el) el.textContent = value;
+        });
+    }
+
+    function renderDashboardEntryCards(data) {
+        const box = document.getElementById('dashboardEntryCards');
+        if (!box) return;
+
+        const alerts = data.alerts || {};
+        const crawler = data.crawler_today_summary || {};
+        const entries = [
+            {
+                title: '評論監控',
+                desc: '追蹤負評、風險醫院與評論趨勢',
+                icon: 'fa-comments',
+                iconClass: 'red',
+                view: 'reviews',
+                button: '查看評論監控',
+                metrics: [
+                    ['今日負評', `${fmt(data.today_negative_reviews)} 則`],
+                    ['高風險', `${fmt((data.risk_hospitals || []).length)} 家`]
+                ]
+            },
+            {
+                title: '爬蟲管理',
+                desc: '執行批次爬蟲、管理排程與任務紀錄',
+                icon: 'fa-spider',
+                iconClass: '',
+                view: 'crawler',
+                button: '前往爬蟲管理',
+                metrics: [
+                    ['今日執行', `${fmt(crawler.total)} 次`],
+                    ['異常', `${fmt(crawler.issues || crawler.batch_failed)} 次`]
+                ]
+            },
+            {
+                title: '健康警示',
+                desc: '整理社區警示並發布全站公告',
+                icon: 'fa-heartbeat',
+                iconClass: 'orange',
+                view: 'health',
+                button: '查看健康警示',
+                metrics: [
+                    ['風險提醒', `${fmt(alerts.negative_surge_alerts)} 則`],
+                    ['待確認', `${fmt(alerts.today_negative_reviews)} 則`]
+                ]
+            },
+            {
+                title: '醫院資料庫',
+                desc: '維護醫院資料、認證申請與備份',
+                icon: 'fa-database',
+                iconClass: 'green',
+                view: 'data',
+                button: '管理醫院資料',
+                metrics: [
+                    ['已收錄', `${fmt(data.total_hospitals)} 家`],
+                    ['今日更新', `${fmt(data.today_hospitals)} 家`]
+                ]
+            }
+        ];
+
+        box.innerHTML = entries.map(entry => `
+            <div class="entry-card">
+                <div>
+                    <div class="entry-card-head">
+                        <div>
+                            <div class="entry-title">${entry.title}</div>
+                            <div class="entry-desc">${entry.desc}</div>
+                        </div>
+                        <div class="entry-icon ${entry.iconClass}"><i class="fas ${entry.icon}"></i></div>
+                    </div>
+                    <div class="entry-metrics">
+                        ${entry.metrics.map(([label, value]) => `
+                            <div class="entry-metric">
+                                <div class="entry-metric-label">${label}</div>
+                                <div class="entry-metric-value">${value}</div>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+                ${entry.href ? `
+                    <a href="${entry.href}" class="btn btn-sm btn-outline-primary fw-bold">
+                        ${entry.button}
+                    </a>
+                ` : `
+                    <button type="button" class="btn btn-sm btn-outline-primary fw-bold" onclick="setBackendView('${entry.view}')">
+                        ${entry.button}
+                    </button>
+                `}
+            </div>
+        `).join('');
+    }
+
+    function toggleStatusDetail(id) {
+        document.getElementById(id)?.classList.toggle('d-none');
+    }
+
+    async function setAiSummaryMode(mode) {
+        const buttons = Array.from(document.querySelectorAll('[data-ai-mode]'));
+        const statusBox = document.getElementById('aiModeStatus');
+        buttons.forEach(button => button.disabled = true);
+        if (statusBox) statusBox.textContent = '正在更新全站 AI 模式...';
+
+        try {
+            const response = await fetch('/admin/ai_summary_mode', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
+                body: JSON.stringify({ mode })
+            });
+            const data = await response.json();
+            if (!response.ok || data.error) throw new Error(data.error || 'AI 模式更新失敗');
+
+            if (latestDashboardData?.system_status) {
+                latestDashboardData.system_status.ai_summary_mode = data.mode;
+                renderSystemStatus(latestDashboardData.system_status);
+                document.getElementById('geminiDetail')?.classList.remove('d-none');
+            }
+            const nextStatusBox = document.getElementById('aiModeStatus');
+            if (nextStatusBox) nextStatusBox.textContent = `已切換為：${data.label}`;
+        } catch (err) {
+            if (statusBox) statusBox.textContent = err.message;
+            alert(err.message);
+            buttons.forEach(button => button.disabled = false);
+        }
+    }
+
+    function renderAlerts(alerts) {
+        const box = document.getElementById('alertList');
+        if (!box) return;
+        const rows = [
+            {
+                icon: 'fa-triangle-exclamation',
+                title: '高風險醫院',
+                value: `${fmt(alerts.risk_hospitals)} 家`,
+                danger: alerts.has_risk_alert
+            },
+            {
+                icon: 'fa-comment-slash',
+                title: '今日新增負評',
+                value: `${fmt(alerts.today_negative_reviews)} 則`,
+                danger: alerts.today_negative_reviews > 0
+            },
+            {
+                icon: 'fa-database',
+                title: '資料庫備份',
+                value: alerts.backup_recommended ? '建議備份' : '正常',
+                danger: alerts.backup_recommended
+            }
+        ];
+
+        box.innerHTML = rows.map(item => `
+            <div class="alert-item ${item.danger ? 'danger' : ''}">
+                <span><i class="fas ${item.icon} me-2 ${item.danger ? 'text-danger' : 'text-primary'}"></i>${item.title}</span>
+                <span class="fw-bold ${item.danger ? 'text-danger' : 'text-success'}">${item.value}</span>
+            </div>
+        `).join('');
+    }
+
+    function renderTaskCenter(data) {
+        const pendingBox = document.getElementById('pendingTaskCenter');
+        if (!pendingBox) return;
+
+        const alerts = data.alerts || {};
+        const pendingTasks = [];
+
+        if ((alerts.pending_hospital_users || 0) > 0) {
+            pendingTasks.push({
+                level: 'warning',
+                icon: 'fa-user-doctor',
+                title: '醫院帳號審核',
+                desc: `${fmt(alerts.pending_hospital_users)} 筆待審核`,
+                badge: '待審核',
+                action: "setBackendView('users')"
+            });
+        }
+
+        if ((alerts.pending_award_applications || 0) > 0) {
+            pendingTasks.push({
+                level: 'warning',
+                icon: 'fa-medal',
+                title: '得獎認證申請',
+                desc: `${fmt(alerts.pending_award_applications)} 筆待審核`,
+                badge: '待審核',
+                action: "setBackendView('data')"
+            });
+        }
+
+        if ((alerts.risk_hospitals || 0) > 0) {
+            pendingTasks.push({
+                level: 'urgent',
+                icon: 'fa-hospital-user',
+                title: '追蹤高風險醫院',
+                desc: `${fmt(alerts.risk_hospitals)} 家需要追蹤`,
+                badge: '優先',
+                action: 'focusRiskHospitals()'
+            });
+        }
+
+        if ((alerts.today_negative_reviews || 0) > 0) {
+            pendingTasks.push({
+                level: 'urgent',
+                icon: 'fa-comment-slash',
+                title: '檢視今日新增負評',
+                desc: `今日 ${fmt(alerts.today_negative_reviews)} 則`,
+                badge: '今日',
+                action: 'openTodayNegativeReviews()'
+            });
+        }
+
+        if (alerts.backup_recommended) {
+            pendingTasks.push({
+                level: 'warning',
+                icon: 'fa-database',
+                title: '建議備份資料庫',
+                desc: '資料量已累積',
+                badge: '維護',
+                action: 'openBackupStatus()'
+            });
+        }
+
+        if (!pendingTasks.length) {
+            pendingTasks.push({
+                level: '',
+                icon: 'fa-circle-check',
+                title: '目前沒有急迫事項',
+                desc: '平台狀態穩定',
+                badge: '正常'
+            });
+        }
+
+        const renderTask = task => `
+            <div class="task-item summary ${task.level} ${task.action ? 'clickable' : ''}" ${task.action ? `onclick="${task.action}"` : ''}>
+                <div class="d-flex gap-3">
+                    <span class="task-icon"><i class="fas ${task.icon}"></i></span>
+                    <div>
+                        <div class="fw-bold text-dark">${task.title}</div>
+                        <div class="small text-muted mt-1">${task.desc}</div>
+                    </div>
+                </div>
+                <span class="badge ${task.level === 'urgent' ? 'text-bg-danger' : (task.level === 'warning' ? 'text-bg-warning' : 'text-bg-success')} align-self-start">${task.badge}</span>
+            </div>
+        `;
+
+        pendingBox.innerHTML = pendingTasks.slice(0, 3).map(renderTask).join('');
+    }
+
+    function focusRiskHospitals() {
+        setBackendView('reviews');
+        window.setTimeout(() => {
+            const panel = document.getElementById('riskHospitalsPanel');
+            panel?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            panel?.classList.add('focus-pulse');
+            window.setTimeout(() => panel?.classList.remove('focus-pulse'), 1400);
+        }, 80);
+    }
+
+    function openTodayNegativeReviews() {
+        modalTitle.textContent = '今日新增負評';
+        tableBody.innerHTML = '';
+        currentModalReviews = [];
+        hospitalIssueSummary.classList.add('d-none');
+        hospitalIssueSummary.innerHTML = '';
+        hospitalProfileLink.classList.add('d-none');
+        loadingSpinner.classList.remove('d-none');
+        reviewListContent.classList.add('d-none');
+        reviewModal.show();
+
+        fetch('/admin/today_negative_reviews?detail=1')
+            .then(response => response.json())
+            .then(data => {
+                if (!Array.isArray(data)) throw new Error(data.error || '今日新增負評格式錯誤');
+                loadingSpinner.classList.add('d-none');
+                reviewListContent.classList.remove('d-none');
+                currentModalReviews = data.sort((a, b) => new Date(b.stored_at || b.time || 0) - new Date(a.stored_at || a.time || 0));
+                modalTitle.textContent = `今日新增負評 - 共 ${currentModalReviews.length} 則`;
+                renderTodayNegativeGroups(currentModalReviews);
+            })
+            .catch(err => {
+                console.error(err);
+                tableBody.innerHTML = '<tr><td colspan="5" class="text-center text-danger p-4">載入失敗，請稍後再試</td></tr>';
+                loadingSpinner.classList.add('d-none');
+                reviewListContent.classList.remove('d-none');
+            });
+    }
+
+    function renderTodayNegativeGroups(reviews) {
+        const groups = {};
+        reviews.forEach(review => {
+            const key = review.hospital || '未知醫院';
+            if (!groups[key]) {
+                groups[key] = {
+                    hospital: key,
+                    hospital_id: review.hospital_id,
+                    latest_time: review.time || '',
+                    count: 0
+        };
+    }
+
+    function openBackupStatus() {
+        const content = document.getElementById('backupStatusContent');
+        const data = latestDashboardData || {};
+        const status = data.system_status || {};
+        const alerts = data.alerts || {};
+        const history = status.backup_history || [];
+        const lastBackup = status.last_backup || history[0] || null;
+        const historyRows = history.length
+            ? history.map(item => `
+                <div class="d-flex justify-content-between align-items-start gap-3 border rounded p-2 bg-white">
+                    <div>
+                        <div class="fw-bold">${escapeHTML(item.file_name || '備份檔')}</div>
+                        <div class="small text-muted">${escapeHTML(item.created_at || '--')} · ${escapeHTML(item.actor_username || '管理員')}</div>
+                    </div>
+                    <span class="badge text-bg-light">${escapeHTML(item.file_size_mb ?? '--')} MB</span>
+                </div>
+            `).join('')
+            : '<div class="text-muted text-center border rounded p-3 bg-white">目前還沒有備份紀錄，第一次下載備份後會出現在這裡。</div>';
+        content.innerHTML = `
+            <div class="row g-2">
+                <div class="col-6">
+                    <div class="border rounded p-3 bg-light h-100">
+                        <div class="small text-muted fw-bold">資料庫大小</div>
+                        <div class="fs-4 fw-bold text-dark">${escapeHTML(status.database_size_mb ?? '--')} MB</div>
+                    </div>
+                </div>
+                <div class="col-6">
+                    <div class="border rounded p-3 bg-light h-100">
+                        <div class="small text-muted fw-bold">備份建議</div>
+                        <div class="fs-5 fw-bold ${alerts.backup_recommended ? 'text-warning' : 'text-success'}">${alerts.backup_recommended ? '建議備份' : '目前正常'}</div>
+                    </div>
+                </div>
+                <div class="col-6">
+                    <div class="border rounded p-3 bg-light h-100">
+                        <div class="small text-muted fw-bold">已收錄醫院</div>
+                        <div class="fs-5 fw-bold">${fmt(data.total_hospitals)}</div>
+                    </div>
+                </div>
+                <div class="col-6">
+                    <div class="border rounded p-3 bg-light h-100">
+                        <div class="small text-muted fw-bold">總評論數</div>
+                        <div class="fs-5 fw-bold">${fmt(data.total_reviews)}</div>
+                    </div>
+                </div>
+            </div>
+            <div class="border rounded p-3 bg-warning-subtle border-warning-subtle mt-2">
+                <div class="fw-bold text-dark mb-1">上次備份時間</div>
+                <div>${lastBackup ? `${escapeHTML(lastBackup.created_at)}，檔案大小 ${escapeHTML(lastBackup.file_size_mb)} MB` : '尚未有備份紀錄'}</div>
+            </div>
+            <div class="fw-bold mt-3 mb-2">最近備份紀錄</div>
+            <div class="d-grid gap-2">${historyRows}</div>
+            <div class="small text-muted mt-3">備份檔會下載目前的系統資料庫；若資料量持續增加，建議定期下載保存。</div>
+            <div class="small text-muted">狀態檢查時間：${new Date().toLocaleString('zh-TW', { hour12: false })}</div>
+        `;
+        new bootstrap.Modal(document.getElementById('backupStatusModal')).show();
+    }
+            groups[key].count += 1;
+            if ((review.time || '') > (groups[key].latest_time || '')) groups[key].latest_time = review.time;
+        });
+        const rows = Object.values(groups).sort((a, b) => new Date(b.latest_time || 0) - new Date(a.latest_time || 0));
+        hospitalIssueSummary.classList.remove('d-none');
+        hospitalIssueSummary.innerHTML = `
+            <div class="input-group mb-3">
+                <span class="input-group-text bg-white"><i class="fas fa-search text-muted"></i></span>
+                <input type="search" id="todayNegativeSearch" class="form-control" placeholder="搜尋醫院名稱">
+            </div>
+        `;
+        tableBody.innerHTML = rows.length ? rows.map(group => `
+            <tr data-today-negative-group data-hospital="${escapeHTML(group.hospital).toLowerCase()}">
+                <td>
+                    ${group.hospital_id ? `<a class="fw-bold text-primary text-decoration-none" href="/hospital/${group.hospital_id}">${escapeHTML(group.hospital)}</a>` : `<span class="fw-bold">${escapeHTML(group.hospital)}</span>`}
+                    <div class="small text-muted">最新時間：${escapeHTML(group.latest_time || '--')}</div>
+                </td>
+                <td><span class="badge badge-neg">負面</span></td>
+                <td><span class="badge bg-danger-subtle text-danger border border-danger-subtle">${fmt(group.count)} 則</span></td>
+                <td class="small text-muted">${escapeHTML(group.latest_time || '--')}</td>
+                <td>
+                    <button type="button" class="btn btn-sm btn-outline-primary" data-hospital-name="${escapeHTML(group.hospital)}" onclick="showTodayNegativeHospital(this.dataset.hospitalName)">
+                        查看評論
+                    </button>
+                </td>
+            </tr>
+        `).join('') : '<tr><td colspan="5" class="text-center text-muted p-4">今天沒有新增負評</td></tr>';
+        document.getElementById('todayNegativeSearch')?.addEventListener('input', event => {
+            const keyword = event.currentTarget.value.trim().toLowerCase();
+            document.querySelectorAll('[data-today-negative-group]').forEach(row => {
+                row.classList.toggle('d-none', keyword && !(row.dataset.hospital || '').includes(keyword));
+            });
+        });
+    }
+
+    function showTodayNegativeHospital(hospitalName) {
+        const reviews = currentModalReviews
+            .filter(review => review.hospital === hospitalName)
+            .sort((a, b) => new Date(b.time || 0) - new Date(a.time || 0));
+        modalTitle.textContent = `${hospitalName} - 今日新增負評 ${reviews.length} 則`;
+        hospitalIssueSummary.classList.remove('d-none');
+        hospitalIssueSummary.innerHTML = `
+            <button type="button" class="btn btn-sm btn-outline-secondary mb-3" onclick="renderTodayNegativeGroups(currentModalReviews); modalTitle.textContent = '今日新增負評 - 共 ${currentModalReviews.length} 則';">
+                <i class="fas fa-arrow-left me-1"></i>回到醫院列表
+            </button>
+        `;
+        renderReviewRows(reviews);
+    }
+
+    async function loadDashboard() {
+        if (dashboardLoaded) {
+            sentimentChartInstance?.resize();
+            trendChartInstance?.resize();
+            crawlerRunChartInstance?.resize();
+            return;
+        }
+
+        try {
+            const response = await fetch('/api/dashboard-data');
+            const data = await response.json();
+            if (!response.ok || data.error) throw new Error(data.error || '載入失敗');
+            latestDashboardData = data;
+
+            document.getElementById('todayReviews').innerText = fmt(data.today_reviews);
+            document.getElementById('todayHospitals').innerText = fmt(data.today_hospitals);
+            document.getElementById('totalReviews').innerText = fmt(data.total_reviews);
+            document.getElementById('totalHospitals').innerText = fmt(data.total_hospitals);
+            document.getElementById('negativeRate').innerText = `${data.negative_rate}%`;
+            document.getElementById('negativeCount').innerText = fmt(data.negative);
+            document.getElementById('totalUsers').innerText = fmt(data.total_users);
+
+            renderDashboardIssues(data.top_issues);
+            renderRiskHospitals(data.risk_hospitals);
+            renderRecentHospitals(data.recent_hospitals);
+            renderTaskCenter(data);
+            renderSystemStatus(data.system_status || {});
+            renderTodayCrawlerSummary(data.crawler_today_summary || {});
+            renderReviewMonitorSummary(data);
+            renderDashboardEntryCards(data);
+
+            const ctx = document.getElementById('sentimentChart').getContext('2d');
+            const sentimentTotal = Number(data.positive || 0) + Number(data.negative || 0);
+            const sentimentRates = {
+                positive: Number(data.positive_rate || 0),
+                negative: Number(data.negative_rate || 0)
+            };
+            const sentimentCenterText = {
+                id: 'sentimentCenterText',
+                afterDraw(chart, args, options) {
+                    const { ctx, chartArea } = chart;
+                    if (!chartArea) return;
+                    const centerX = (chartArea.left + chartArea.right) / 2;
+                    const centerY = (chartArea.top + chartArea.bottom) / 2;
+                    ctx.save();
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillStyle = '#25364a';
+                    ctx.font = '800 28px "Segoe UI", "Microsoft JhengHei", sans-serif';
+                    ctx.fillText(`${options.primaryRate}%`, centerX, centerY - 8);
+                    ctx.fillStyle = '#6c7a89';
+                    ctx.font = '800 16px "Segoe UI", "Microsoft JhengHei", sans-serif';
+                    ctx.fillText(`負評 ${options.negativeRate}%`, centerX, centerY + 22);
+                    ctx.restore();
+                }
+            };
+            if (sentimentChartInstance) sentimentChartInstance.destroy();
+            sentimentChartInstance = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['正面評論', '負面評論'],
+                    datasets: [{
+                        data: [data.positive, data.negative],
+                        backgroundColor: ['#198754', '#dc3545'],
+                        borderWidth: 0,
+                        hoverOffset: 5
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    cutout: '45%',
+                    plugins: {
+                        sentimentCenterText: {
+                            primaryRate: sentimentRates.positive,
+                            negativeRate: sentimentRates.negative
+                        },
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                boxWidth: 52,
+                                boxHeight: 14,
+                                padding: 16,
+                                font: { size: 14, weight: '700' }
+                            }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: context => {
+                                    const rate = context.dataIndex === 0 ? sentimentRates.positive : sentimentRates.negative;
+                                    return `${context.label}：${fmt(context.raw)} 則，占 ${rate}%`;
+                                }
+                            }
+                        }
+                    }
+                },
+                plugins: [sentimentCenterText]
+            });
+
+            const trendCtx = document.getElementById('trendChart').getContext('2d');
+            if (trendChartInstance) trendChartInstance.destroy();
+            trendChartInstance = new Chart(trendCtx, {
+                type: 'line',
+                data: {
+                    labels: (data.review_trend || []).map(item => item.label),
+                    datasets: [
+                        {
+                            label: '總評論',
+                            data: (data.review_trend || []).map(item => item.total),
+                            borderColor: '#0066cc',
+                            backgroundColor: 'rgba(0, 102, 204, 0.08)',
+                            tension: 0.35,
+                            fill: true
+                        },
+                        {
+                            label: '負評',
+                            data: (data.review_trend || []).map(item => item.negative),
+                            borderColor: '#dc3545',
+                            backgroundColor: 'rgba(220, 53, 69, 0.08)',
+                            tension: 0.35,
+                            fill: true
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { position: 'bottom' } },
+                    scales: { y: { beginAtZero: true, ticks: { precision: 0 } } }
+                }
+            });
+
+            const crawlerRunCtx = document.getElementById('crawlerRunChart')?.getContext('2d');
+            if (crawlerRunCtx) {
+                const crawlerTrend = data.crawler_trend || [];
+                if (crawlerRunChartInstance) crawlerRunChartInstance.destroy();
+                crawlerRunChartInstance = new Chart(crawlerRunCtx, {
+                    type: 'line',
+                    data: {
+                        labels: crawlerTrend.map(item => item.label),
+                        datasets: [
+                            {
+                                label: '全部執行',
+                                data: crawlerTrend.map(item => item.jobs ?? item.count ?? 0),
+                                borderColor: '#0066cc',
+                                backgroundColor: 'rgba(0, 102, 204, 0.08)',
+                                tension: 0.35,
+                                fill: true
+                            },
+                            {
+                                label: '異常',
+                                data: crawlerTrend.map(item => item.issues || 0),
+                                borderColor: '#dc3545',
+                                backgroundColor: 'rgba(220, 53, 69, 0.08)',
+                                tension: 0.35,
+                                fill: true
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { position: 'bottom' },
+                            tooltip: {
+                                callbacks: {
+                                    title: function(items) {
+                                        const index = items?.[0]?.dataIndex ?? 0;
+                                        const item = crawlerTrend[index] || {};
+                                        return `${item.date || item.label || ''} 爬蟲執行明細`;
+                                    },
+                                    label: function(context) {
+                                        const item = crawlerTrend[context.dataIndex] || {};
+                                        const total = item.jobs ?? item.count ?? 0;
+                                        const general = item.general || 0;
+                                        const batch = item.batch || 0;
+                                        const batchFailed = item.batch_failed || 0;
+                                        if (context.datasetIndex === 0) return `全部執行：${total} 次`;
+                                        return `異常：${batchFailed} 次`;
+                                    },
+                                    afterBody: function(items) {
+                                        const index = items?.[0]?.dataIndex ?? 0;
+                                        const item = crawlerTrend[index] || {};
+                                        return [
+                                            `一般使用者爬醫院：${item.general || 0} 次`,
+                                            `批次爬蟲：${(item.batch || 0) + (item.batch_failed || 0)} 次`,
+                                            `批次成功：${item.batch || 0} 次`,
+                                            `批次爬蟲異常：${item.batch_failed || 0} 次`
+                                        ];
+                                    }
+                                }
+                            }
+                        },
+                        scales: { y: { beginAtZero: true, ticks: { precision: 0 } } }
+                    }
+                });
+            }
+
+            dashboardLoaded = true;
+        } catch (err) {
+            console.error(err);
+            document.getElementById('issueList').innerHTML = '<div class="text-danger text-center py-5">儀表板資料載入失敗</div>';
+        }
+    }
+
+    function formatBatchDuration(seconds) {
+        seconds = Math.max(Number(seconds) || 0, 0);
+        const hours = Math.floor(seconds / 3600);
+        const minutes = Math.floor((seconds % 3600) / 60);
+        const restSeconds = Math.floor(seconds % 60);
+        if (hours > 0) return `${hours} 小時 ${minutes} 分`;
+        if (minutes > 0) return `${minutes} 分 ${restSeconds} 秒`;
+        return `${restSeconds} 秒`;
+    }
+
+    function toggleBatchControls(isRunning) {
+        const startButton = document.getElementById('batchStartButton');
+        const runningControls = document.getElementById('batchRunningControls');
+        startButton?.classList.toggle('d-none', isRunning);
+        if (startButton) startButton.disabled = isRunning;
+        runningControls?.classList.toggle('d-none', !isRunning);
+        runningControls?.classList.toggle('d-flex', isRunning);
+    }
+
+    function getBatchActionText(snapshot = {}) {
+        const phase = snapshot.phase || snapshot.status || 'idle';
+        const currentReviews = fmt(snapshot.current_review_count || 0);
+        const targetReviews = fmt(snapshot.target_review_count || 0);
+        const phaseLabels = {
+            starting: '正在準備批次爬蟲',
+            opening: '正在開啟 Google Maps',
+            locating: '正在定位醫院頁面',
+            sorting: '正在切換最新評論排序',
+            analyzing: '正在分析評論情緒',
+            saving: '正在儲存評論',
+            done: '正在整理本家結果',
+            queued: '正在啟動背景爬蟲',
+            resting: '正在休息，稍後繼續',
+            paused: '批次爬蟲已暫停',
+            stopping: '正在停止批次爬蟲',
+            stopped: '批次爬蟲已停止',
+            finished: '批次爬蟲已完成',
+            error: '批次爬蟲發生錯誤',
+            idle: '尚未執行批次爬蟲。'
+        };
+        if (phase === 'collecting') {
+            return `正在抓取評論：${currentReviews}/${targetReviews} 則`;
+        }
+        return phaseLabels[phase] || (snapshot.running ? '批次爬蟲執行中' : (snapshot.message || '尚未執行批次爬蟲。'));
+    }
+
+    let batchStatusTimer = null;
+
+    function isBatchActive(snapshot = {}) {
+        return !!snapshot.running
+            || ['queued', 'starting', 'running', 'resting', 'stopping'].includes(snapshot.status)
+            || ['queued', 'starting', 'opening', 'locating', 'sorting', 'collecting', 'analyzing', 'saving', 'resting'].includes(snapshot.phase);
+    }
+
+    function scheduleBatchStatusRefresh(snapshot = {}) {
+        clearTimeout(batchStatusTimer);
+        batchStatusTimer = null;
+        batchStatusTimer = setTimeout(refreshBatchStatus, isBatchActive(snapshot) ? 2000 : 10000);
+    }
+
+    function forceBatchStatusRefresh(delay = 800) {
+        clearTimeout(batchStatusTimer);
+        batchStatusTimer = setTimeout(refreshBatchStatus, delay);
+    }
+
+    function renderBatchStatus(snapshot = {}) {
+        const percent = Math.max(Math.min(Number(snapshot.percent || 0), 100), 0);
+        const progressBar = document.getElementById('batchProgressBar');
+        const progressPercent = document.getElementById('batchProgressPercent');
+        const progressText = document.getElementById('batchProgressText');
+        const progressMetrics = document.getElementById('batchProgressMetrics');
+        const statusText = document.getElementById('batchCrawlStatus');
+        const running = isBatchActive(snapshot);
+        const message = snapshot.message || '尚未執行批次爬蟲。';
+
+        if (progressBar) {
+            progressBar.style.width = `${percent}%`;
+            progressBar.classList.toggle('progress-bar-animated', running);
+            progressBar.classList.toggle('bg-success', !running && percent >= 100);
+            progressBar.classList.toggle('bg-warning', snapshot.status === 'paused' || snapshot.status === 'resting');
+        }
+        if (progressPercent) progressPercent.textContent = `${percent}%`;
+        if (progressText) {
+            const total = Number(snapshot.total || 0);
+            const processed = Number(snapshot.processed || 0);
+            const current = snapshot.running && total ? `目前第 ${fmt(Math.min(processed + 1, total))} / ${fmt(total)} 家` : '';
+            const remaining = snapshot.estimated_remaining_seconds !== null && snapshot.estimated_remaining_seconds !== undefined
+                ? `預估剩餘 ${formatBatchDuration(snapshot.estimated_remaining_seconds)}`
+                : '';
+            const details = [current, remaining].filter(Boolean).join('，');
+            progressText.innerHTML = `
+                <div>${escapeHTML(getBatchActionText(snapshot))}</div>
+                ${details ? `<div>${escapeHTML(details)}。</div>` : ''}
+            `;
+        }
+        if (progressMetrics) {
+            progressMetrics.innerHTML = `
+                <div>完成 ${fmt(snapshot.processed || 0)} / ${fmt(snapshot.total || 0)} 家，成功 ${fmt(snapshot.success || 0)}，失敗 ${fmt(snapshot.failed || 0)}</div>
+                <div>新增 ${fmt(snapshot.new_reviews || 0)} 則，更新 ${fmt(snapshot.refreshed_reviews || 0)} 則。</div>
+            `;
+        }
+        if (statusText && message) {
+            statusText.className = running ? 'small text-primary fw-bold' : 'small text-muted';
+            statusText.textContent = message;
+        }
+        toggleBatchControls(running);
+        scheduleBatchStatusRefresh(snapshot);
+    }
+
+    async function refreshBatchStatus() {
+        try {
+            const response = await fetch('/admin/batch_auto_status');
+            const data = await response.json();
+            if (!response.ok || data.error) throw new Error(data.error || '進度讀取失敗');
+            renderBatchStatus(data);
+        } catch (err) {
+            console.warn(err);
+            clearTimeout(batchStatusTimer);
+            batchStatusTimer = setTimeout(refreshBatchStatus, 15000);
+        }
+    }
+
+    function updateBatchEstimate() {
+        const form = document.getElementById('batchCrawlForm');
+        const estimateBox = document.getElementById('batchEstimateText');
+        if (!form || !estimateBox) return;
+        const count = Math.max(Number(form.hospital_count?.value || 0), 1);
+        const maxReviews = Math.max(Number(form.max_reviews?.value || 0), 1);
+        const restEvery = Math.max(Number(form.rest_every?.value || 1), 1);
+        const restSeconds = Math.max(Number(form.rest_seconds?.value || 0), 0);
+        const restTotal = Math.floor(count / restEvery) * restSeconds;
+        const lowSeconds = (count * (35 + Math.min(maxReviews, 40) * 3)) + restTotal;
+        const highSeconds = (count * (75 + Math.min(maxReviews, 80) * 7)) + restTotal;
+        estimateBox.textContent = `粗估約 ${formatBatchDuration(lowSeconds)} 到 ${formatBatchDuration(highSeconds)}；Google 地圖載入速度不同，實際時間會浮動。`;
+    }
+
+    async function updateBatchPreview() {
+        const form = document.getElementById('batchCrawlForm');
+        const summary = document.getElementById('batchPreviewSummary');
+        const list = document.getElementById('batchPreviewList');
+        if (!form || !summary || !list) return;
+        updateBatchEstimate();
+        summary.textContent = '正在讀取本次清單...';
+        const params = new URLSearchParams({
+            start_index: form.start_index?.value || 1,
+            hospital_count: form.hospital_count?.value || 5
+        });
+        try {
+            const response = await fetch(`/admin/batch_preview?${params}`);
+            const data = await response.json();
+            if (!response.ok || data.error) throw new Error(data.error || '讀取清單失敗');
+            const hospitals = data.hospitals || [];
+            summary.textContent = hospitals.length
+                ? `本次會爬第 ${data.start_index} 到 ${data.end_index} 家，共 ${hospitals.length} 家。`
+                : '目前沒有符合範圍的醫院。';
+            list.innerHTML = hospitals.map((name, index) => `
+                <div class="batch-preview-item">
+                    <span class="batch-preview-index">#${Number(data.start_index || 0) + index}</span>
+                    <span class="batch-preview-name" title="${escapeHTML(name)}">${escapeHTML(name)}</span>
+                </div>
+            `).join('');
+        } catch (err) {
+            summary.textContent = err.message;
+        }
+    }
+
+    async function toggleBatchPause() {
+        const button = document.getElementById('batchPauseButton');
+        const action = button?.dataset.paused === '1' ? 'resume' : 'pause';
+        const formData = new FormData();
+        formData.append('csrf_token', csrfToken);
+        formData.append('action', action);
+        try {
+            const response = await fetch('/admin/batch_auto_pause', { method: 'POST', body: formData });
+            const data = await response.json();
+            if (!response.ok || data.error) throw new Error(data.error || '操作失敗');
+            const isPaused = action === 'pause';
+            button.dataset.paused = isPaused ? '1' : '0';
+            button.innerHTML = isPaused ? '<i class="fas fa-play me-1"></i>繼續' : '<i class="fas fa-pause me-1"></i>暫停';
+            document.getElementById('batchCrawlStatus').textContent = data.message || (isPaused ? '已暫停' : '已繼續');
+            renderBatchStatus(data.batch_status || {});
+        } catch (err) {
+            alert(err.message);
+        }
+    }
+
+    async function stopBatchCrawl() {
+        if (!confirm('確定要停止這次批次爬蟲嗎？停止後不會繼續下一家。')) return;
+        const formData = new FormData();
+        formData.append('csrf_token', csrfToken);
+        try {
+            const response = await fetch('/admin/batch_auto_stop', { method: 'POST', body: formData });
+            const data = await response.json();
+            if (!response.ok || data.error) throw new Error(data.error || '停止失敗');
+            document.getElementById('batchCrawlStatus').textContent = data.message || '已送出停止';
+            renderBatchStatus(data.batch_status || {});
+        } catch (err) {
+            alert(err.message);
+        }
+    }
+
+    async function loadBatchJobs() {
+        const box = document.getElementById('batchJobsList');
+        if (!box) return;
+        box.innerHTML = '<div class="text-muted text-center py-4">讀取中...</div>';
+        try {
+            const response = await fetch('/admin/batch_jobs');
+            const data = await response.json();
+            if (!response.ok || data.error) throw new Error(data.error || '讀取任務失敗');
+            const statusLabels = {
+                running: ['執行中', 'text-bg-primary'], paused: ['已暫停', 'text-bg-warning'],
+                stopping: ['停止中', 'text-bg-warning'], stopped: ['已停止', 'text-bg-secondary'],
+                finished: ['已完成', 'text-bg-success'], failed: ['失敗', 'text-bg-danger'],
+                pending: ['待執行', 'text-bg-secondary']
+            };
+            const jobs = data.jobs || [];
+            box.innerHTML = jobs.length ? jobs.map(job => {
+                const successCount = Number(job.success_count ?? job.success ?? 0);
+                const failedCount = Number(job.failed_count ?? job.failed ?? 0) + Number(job.skipped ?? 0);
+                const statusLabel = statusLabels[job.status] || ['未知狀態', 'text-bg-secondary'];
+                return `
+                    <div class="batch-job-card">
+                        <div class="d-flex justify-content-between gap-3 flex-wrap">
+                            <div>
+                                <div class="fw-bold fs-6">批次任務 #${job.id}</div>
+                                <div class="small text-muted">${escapeHTML(job.created_at || '--')}</div>
+                                <div class="small text-muted mt-1">${escapeHTML(job.message || '')}</div>
+                            </div>
+                            <div class="d-flex align-items-start gap-2">
+                                <span class="badge ${statusLabel[1]}">${statusLabel[0]}</span>
+                                ${failedCount > 0 ? `<button type="button" class="btn btn-sm btn-outline-danger fw-bold" onclick="retryFailedBatchJob(${job.id})">失敗重爬</button>` : ''}
+                            </div>
+                        </div>
+                        <div class="batch-job-metrics">
+                            <div class="batch-job-metric"><div class="label">完成</div><div class="value text-success">${fmt(successCount)}</div></div>
+                            <div class="batch-job-metric"><div class="label">失敗</div><div class="value text-danger">${fmt(failedCount)}</div></div>
+                            <div class="batch-job-metric"><div class="label">新增評論</div><div class="value">${fmt(job.new_reviews)}</div></div>
+                            <div class="batch-job-metric"><div class="label">更新評論</div><div class="value">${fmt(job.refreshed_reviews)}</div></div>
+                        </div>
+                    </div>
+                `;
+            }).join('') : '<div class="text-muted text-center py-4">目前沒有批次任務紀錄。</div>';
+        } catch (err) {
+            box.innerHTML = `<div class="alert alert-danger">${escapeHTML(err.message)}</div>`;
+        }
+    }
+
+    async function retryFailedBatchJob(jobId) {
+        if (!confirm('確定要重爬這個任務的失敗醫院嗎？')) return;
+        const formData = new FormData();
+        formData.append('csrf_token', csrfToken);
+        const response = await fetch(`/admin/batch_jobs/${jobId}/retry_failed`, { method: 'POST', body: formData });
+        const data = await response.json();
+        if (!response.ok || data.error) return alert(data.error || '重爬失敗');
+        renderBatchStatus(data.batch_status || {});
+        loadBatchJobs();
+    }
+
+    async function loadBatchSchedules() {
+        const box = document.getElementById('batchSchedulesList');
+        if (!box) return;
+        box.innerHTML = '<div class="text-muted text-center py-4">讀取中...</div>';
+        try {
+            const response = await fetch('/admin/batch_schedules');
+            const data = await response.json();
+            if (!response.ok || data.error) throw new Error(data.error || '讀取排程失敗');
+            const schedules = data.schedules || [];
+            box.innerHTML = schedules.length ? schedules.map(item => `
+                <div class="border rounded p-3 bg-white mb-2">
+                    <div class="d-flex justify-content-between gap-3 flex-wrap">
+                        <div>
+                            <div class="fw-bold">${escapeHTML(item.name || '自動排程')}</div>
+                            <div class="small text-muted">
+                                ${item.frequency === 'weekly' ? '每週' : '每天'} ${escapeHTML(item.run_time || '--')} 執行，
+                                從第 ${fmt(Number(item.next_start_index || 0) + 1)} 家開始，每次 ${fmt(item.hospital_count)} 家，每家 ${fmt(item.max_reviews)} 則
+                            </div>
+                            <div class="small text-muted">
+                                下次：${escapeHTML(item.next_run_at || '--')}；上次：${escapeHTML(item.last_run_at || '--')}
+                            </div>
+                        </div>
+                        <div class="d-flex align-items-start gap-2 flex-wrap">
+                            <span class="badge ${item.enabled ? 'text-bg-success' : 'text-bg-secondary'}">${item.enabled ? '啟用中' : '已停用'}</span>
+                            <button type="button" class="btn btn-sm btn-outline-primary fw-bold" onclick="runBatchScheduleNow(${item.id})">
+                                <i class="fas fa-play me-1"></i>立即執行
+                            </button>
+                            <button type="button" class="btn btn-sm ${item.enabled ? 'btn-outline-secondary' : 'btn-outline-success'} fw-bold" onclick="toggleBatchSchedule(${item.id}, ${item.enabled ? 0 : 1})">
+                                ${item.enabled ? '<i class="fas fa-pause me-1"></i>停用' : '<i class="fas fa-check me-1"></i>啟用'}
+                            </button>
+                            <button type="button" class="btn btn-sm btn-outline-danger fw-bold" onclick="deleteBatchSchedule(${item.id})">
+                                <i class="fas fa-trash me-1"></i>刪除
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `).join('') : '<div class="text-muted text-center py-4">目前沒有自動排程。</div>';
+        } catch (err) {
+            box.innerHTML = `<div class="alert alert-danger">${escapeHTML(err.message)}</div>`;
+        }
+    }
+
+    async function submitBatchSchedule(event) {
+        event.preventDefault();
+        const form = event.currentTarget;
+        const status = document.getElementById('batchScheduleFormStatus');
+        status.className = 'small text-muted mt-2';
+        status.textContent = '正在建立排程...';
+        try {
+            const response = await fetch('/admin/batch_schedules', {
+                method: 'POST',
+                body: new FormData(form)
+            });
+            const data = await response.json();
+            if (!response.ok || data.error) throw new Error(data.error || '新增排程失敗');
+            status.className = 'small text-success fw-bold mt-2';
+            status.textContent = data.message || '排程已建立';
+            loadBatchSchedules();
+        } catch (err) {
+            status.className = 'small text-danger fw-bold mt-2';
+            status.textContent = err.message;
+        }
+    }
+
+    async function toggleBatchSchedule(scheduleId, enabled) {
+        const formData = new FormData();
+        formData.append('csrf_token', csrfToken);
+        formData.append('enabled', enabled ? '1' : '0');
+        const response = await fetch(`/admin/batch_schedules/${scheduleId}/toggle`, { method: 'POST', body: formData });
+        const data = await response.json();
+        if (!response.ok || data.error) return alert(data.error || '更新排程失敗');
+        loadBatchSchedules();
+    }
+
+    async function runBatchScheduleNow(scheduleId) {
+        const formData = new FormData();
+        formData.append('csrf_token', csrfToken);
+        const response = await fetch(`/admin/batch_schedules/${scheduleId}/run_now`, { method: 'POST', body: formData });
+        const data = await response.json();
+        if (!response.ok || data.error) return alert(data.error || '立即執行失敗');
+        renderBatchStatus(data.batch_status || {});
+        forceBatchStatusRefresh();
+        loadBatchSchedules();
+        alert(data.message || '排程已立即執行');
+    }
+
+    async function deleteBatchSchedule(scheduleId) {
+        if (!confirm('確定要刪除這個自動排程嗎？')) return;
+        const formData = new FormData();
+        formData.append('csrf_token', csrfToken);
+        const response = await fetch(`/admin/batch_schedules/${scheduleId}/delete`, { method: 'POST', body: formData });
+        const data = await response.json();
+        if (!response.ok || data.error) return alert(data.error || '刪除排程失敗');
+        loadBatchSchedules();
+    }
+
+    document.getElementById('batchScheduleForm')?.addEventListener('submit', submitBatchSchedule);
+
+    let batchPreviewTimer = null;
+    document.querySelectorAll('#batchCrawlForm input').forEach(input => {
+        input.addEventListener('input', () => {
+            updateBatchEstimate();
+            if (input.name === 'start_index' || input.name === 'hospital_count') {
+                clearTimeout(batchPreviewTimer);
+                batchPreviewTimer = setTimeout(updateBatchPreview, 250);
+            }
+        });
+    });
+    updateBatchPreview();
+
+    document.getElementById('batchCrawlForm')?.addEventListener('submit', async event => {
+        event.preventDefault();
+        const form = event.currentTarget;
+        const status = document.getElementById('batchCrawlStatus');
+        const button = document.getElementById('batchStartButton');
+        button.disabled = true;
+        status.className = 'small text-muted';
+        status.textContent = '正在啟動背景爬蟲...';
+
+        try {
+            const response = await fetch('/admin/batch_auto_run', {
+                method: 'POST',
+                body: new FormData(form)
+            });
+            const data = await response.json();
+            if (!response.ok || data.error) throw new Error(data.error || '啟動失敗');
+            status.className = 'small text-success fw-bold';
+            status.textContent = data.message;
+            renderBatchStatus(data.batch_status || {});
+            forceBatchStatusRefresh();
+        } catch (err) {
+            status.className = 'small text-danger fw-bold';
+            status.textContent = err.message;
+        } finally {
+            button.disabled = false;
+        }
+    });
+
+    refreshBatchStatus();
+
+    function bindAnnouncementActions(scope = document) {
+        scope.querySelectorAll('.announcement-action-form').forEach(form => {
+            if (form.dataset.bound === '1') return;
+            form.dataset.bound = '1';
+            form.addEventListener('submit', async event => {
+                event.preventDefault();
+                if (form.dataset.deleteConfirm && !confirm(form.dataset.deleteConfirm)) return;
+                const row = form.closest('[data-announcement-row]');
+                try {
+                    const response = await fetch(form.action, {
+                        method: 'POST',
+                        headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                        body: new FormData(form)
+                    });
+                    const data = await response.json();
+                    if (!response.ok || data.error) throw new Error(data.error || '操作失敗');
+                    if (form.action.includes('/delete_announcement/')) {
+                        row?.remove();
+                    } else if (form.action.includes('/toggle_announcement/')) {
+                        document.querySelectorAll('#announcementTableBody .badge.bg-success').forEach(badge => {
+                            const statusCell = badge.closest('td');
+                            const activeRow = badge.closest('[data-announcement-row]');
+                            if (statusCell && activeRow) {
+                                const annId = activeRow.dataset.announcementRow;
+                                statusCell.innerHTML = `
+                                    <form action="/admin/toggle_announcement/${annId}" method="POST" class="m-0 announcement-action-form">
+                                        <input type="hidden" name="csrf_token" value="${csrfToken}"/>
+                                        <button type="submit" class="btn btn-sm btn-outline-secondary rounded-pill">點擊啟用</button>
+                                    </form>
+                                `;
+                            }
+                        });
+                        const statusCell = row?.querySelector('td:nth-child(2)');
+                        if (statusCell) {
+                            statusCell.innerHTML = '<span class="badge bg-success fs-6"><i class="fas fa-check-circle me-1"></i>顯示中</span>';
+                        }
+                        bindAnnouncementActions(document.getElementById('announcementTableBody'));
+                    }
+                } catch (err) {
+                    alert(err.message);
+                }
+            });
+        });
+    }
+
+    document.getElementById('announcementForm')?.addEventListener('submit', async event => {
+        event.preventDefault();
+        const form = event.currentTarget;
+        const input = form.querySelector('input[name="content"]');
+        const button = form.querySelector('button[type="submit"]');
+        button.disabled = true;
+        try {
+            const response = await fetch(form.action, {
+                method: 'POST',
+                headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                body: new FormData(form)
+            });
+            const data = await response.json();
+            if (!response.ok || data.error) throw new Error(data.error || '發布失敗');
+            const tbody = document.getElementById('announcementTableBody');
+            const emptyRow = tbody?.querySelector('td[colspan="3"]')?.closest('tr');
+            emptyRow?.remove();
+            tbody?.insertAdjacentHTML('afterbegin', `
+                <tr data-announcement-row="${data.id}">
+                    <td class="fw-bold text-dark">${escapeHTML(data.content)}</td>
+                    <td class="text-center">
+                        <form action="/admin/toggle_announcement/${data.id}" method="POST" class="m-0 announcement-action-form">
+                            <input type="hidden" name="csrf_token" value="${csrfToken}"/>
+                            <button type="submit" class="btn btn-sm btn-outline-secondary rounded-pill">點擊啟用</button>
+                        </form>
+                    </td>
+                    <td class="text-end">
+                        <form action="/admin/delete_announcement/${data.id}" method="POST" class="announcement-action-form" style="display:inline;" data-delete-confirm="確定要刪除這則公告嗎？">
+                            <input type="hidden" name="csrf_token" value="${csrfToken}"/>
+                            <button type="submit" class="btn btn-sm btn-outline-danger" title="刪除公告">
+                                <i class="fas fa-trash-alt"></i>
+                            </button>
+                        </form>
+                    </td>
+                </tr>
+            `);
+            input.value = '';
+            bindAnnouncementActions(document.getElementById('announcementTableBody'));
+        } catch (err) {
+            alert(err.message);
+        } finally {
+            button.disabled = false;
+        }
+    });
+    bindAnnouncementActions();
+
+    function setBackendView(view) {
+        const sectionMap = {
+            dashboard: 'dashboardPanel',
+            reviews: 'reviewsPanel',
+            crawler: 'crawlerPanel',
+            health: 'healthPanel',
+            data: 'dataPanel',
+            users: 'usersPanel'
+        };
+        const labelMap = {
+            dashboard: '工作台總覽',
+            reviews: '評論監控',
+            crawler: '爬蟲管理',
+            health: '健康警示',
+            data: '醫院資料庫',
+            users: '會員權限'
+        };
+        const subtitleMap = {
+            dashboard: '整合評論監控、健康警示、公告發布與平台資料維護。',
+            reviews: '追蹤評論趨勢、負評原因與高風險醫院。',
+            crawler: '管理批次爬蟲、排程、任務紀錄與執行趨勢。',
+            health: '從社區症狀趨勢產生健康警示並發布全站公告。',
+            data: '管理醫院資料、得獎認證與評論匯出。',
+            users: '管理使用者清單與後台權限。'
+        };
+        const targetView = sectionMap[view] ? view : 'dashboard';
+
+        Object.values(sectionMap).forEach(sectionId => {
+            document.getElementById(sectionId).hidden = sectionId !== sectionMap[targetView];
+        });
+        document.getElementById('backendViewSubtitle').textContent = subtitleMap[targetView];
+        document.querySelectorAll('[data-platform-view]').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.platformView === targetView);
+        });
+
+        history.replaceState(null, '', `#${targetView}`);
+        fetch('/admin/log_view', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
+            body: JSON.stringify({ view: targetView, label: labelMap[targetView] })
+        }).catch(err => console.warn('Admin 頁面紀錄失敗', err));
+        if (targetView === 'dashboard' || targetView === 'reviews' || targetView === 'crawler') loadDashboard();
+    }
+
+    document.querySelectorAll('[data-platform-view]').forEach(btn => {
+        btn.addEventListener('click', () => setBackendView(btn.dataset.platformView));
+    });
+
+    window.addEventListener('hashchange', () => {
+        setBackendView((window.location.hash || '#dashboard').replace('#', ''));
+    });
+
+    setBackendView((window.location.hash || '#dashboard').replace('#', ''));
+</script>
+
+<script>
+    // 初始化 Modal 物件
+    const reviewModal = new bootstrap.Modal(document.getElementById('reviewModal'));
+    const modalTitle = document.getElementById('reviewModalTitle');
+    const tableBody = document.getElementById('reviewTableBody');
+    const loadingSpinner = document.getElementById('loadingSpinner');
+    const reviewListContent = document.getElementById('reviewListContent');
+    const hospitalIssueSummary = document.getElementById('hospitalIssueSummary');
+    const hospitalProfileLink = document.getElementById('hospitalProfileLink');
+    let currentModalReviews = [];
+
+    function filterHospitalRows() {
+        const keyword = document.getElementById('hospitalSearchInput')?.value.trim().toLowerCase() || '';
+        document.querySelectorAll('[data-hospital-row]').forEach(row => {
+            const text = (row.dataset.hospitalText || '').toLowerCase();
+            row.classList.toggle('d-none', keyword && !text.includes(keyword));
+        });
+    }
+
+    function clearHospitalSearch() {
+        const input = document.getElementById('hospitalSearchInput');
+        if (!input) return;
+        input.value = '';
+        filterHospitalRows();
+    }
+
+    document.getElementById('hospitalSearchInput')?.addEventListener('input', filterHospitalRows);
+
+    function filterPublicAwardRows() {
+        const keyword = document.getElementById('publicAwardSearchInput')?.value.trim().toLowerCase() || '';
+        let visibleCount = 0;
+
+        document.querySelectorAll('[data-public-award-row]').forEach(row => {
+            const text = (row.dataset.publicAwardText || '').toLowerCase();
+            const visible = !keyword || text.includes(keyword);
+            row.classList.toggle('d-none', !visible);
+            if (visible) visibleCount += 1;
+        });
+
+        document.getElementById('publicAwardInitialEmptyRow')?.classList.toggle('d-none', !!keyword);
+        document.getElementById('publicAwardEmptyStateRow')?.classList.toggle('d-none', !keyword || visibleCount > 0);
+    }
+
+    function clearPublicAwardSearch() {
+        const input = document.getElementById('publicAwardSearchInput');
+        if (!input) return;
+        input.value = '';
+        filterPublicAwardRows();
+    }
+
+    document.getElementById('publicAwardSearchInput')?.addEventListener('input', filterPublicAwardRows);
+
+    function filterHospitalUsers() {
+        const keyword = document.getElementById('hospitalUserSearchInput')?.value.trim().toLowerCase() || '';
+        let visibleCount = 0;
+        let totalCount = 0;
+    
+        document.querySelectorAll('[data-hospital-user-card]').forEach(card => {
+            const textMatched = !keyword || (card.dataset.searchText || '').toLowerCase().includes(keyword);
+            const visible = textMatched;
+            totalCount += 1;
+        
+            card.classList.toggle('d-none', !visible);
+            if (visible) visibleCount += 1;
+        });
+
+        document.getElementById('hospitalUserInitialEmptyState')?.classList.toggle('d-none', totalCount > 0 || !!keyword);
+        document.getElementById('hospitalUserEmptyState')?.classList.toggle('d-none', visibleCount > 0 || (!keyword && totalCount === 0));
+    }
+
+    document.getElementById('hospitalUserSearchInput')?.addEventListener('input', filterHospitalUsers);
+    filterHospitalUsers();
+
+    function escapeHTML(str) {
+        if (!str) return '';
+        return String(str).replace(/[&<>'"]/g, tag => ({
+            '&': '&amp;',
+            '<': '&lt;',
+            '>': '&gt;',
+            "'": '&#39;',
+            '"': '&quot;'
+        }[tag] || tag));
+    }
+
+    function renderReviewRows(data, filterIssue = 'ALL') {
+        const visibleData = filterIssue === 'ALL'
+            ? data
+            : data.filter(review => review.issue_category === filterIssue);
+
+        if (data.length === 0) {
+            tableBody.innerHTML = '<tr><td colspan="5" class="text-center text-muted p-4">目前沒有評論資料</td></tr>';
+            return;
+        }
+
+        if (visibleData.length === 0) {
+            tableBody.innerHTML = '<tr><td colspan="5" class="text-center text-muted p-4">這個分類目前沒有評論資料</td></tr>';
+            return;
+        }
+
+        let html = '';
+        visibleData.forEach(review => {
+            let badgeClass = review.sentiment === 'POSITIVE' ? 'badge-pos' : 'badge-neg';
+            let sentimentText = review.sentiment === 'POSITIVE' ? '正面' : '負面';
+            let issueText = review.sentiment === 'NEGATIVE' ? review.issue_category : '無';
+            let issueBadge = review.sentiment === 'NEGATIVE'
+                ? `<span class="badge bg-danger-subtle text-danger border border-danger-subtle">${escapeHTML(issueText)}</span>`
+                : `<span class="text-muted small">無</span>`;
+            let hospitalName = review.hospital
+                ? `<div class="small text-primary fw-bold mb-1">${escapeHTML(review.hospital)}</div>`
+                : '';
+            
+            html += `
+                <tr>
+                    <td>
+                        ${hospitalName}
+                        <div style="max-height: 80px; overflow-y: auto; font-size: 0.9rem;">
+                            ${escapeHTML(review.content)}
+                        </div>
+                    </td>
+                    <td><span class="badge ${badgeClass}">${sentimentText}</span></td>
+                    <td>${issueBadge}</td>
+                    <td class="small text-muted">${escapeHTML(review.time)}</td>
+                    <td>
+                        <form action="/admin/delete_review/${review.id}" method="POST" onsubmit="return confirm('確定要刪除這則評論嗎？');">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                            <button type="submit" class="btn btn-sm btn-outline-danger" title="刪除評論">
+                                <i class="fas fa-trash-alt"></i>
+                            </button>
+                        </form>
+                    </td>
+                </tr>
+            `;
+        });
+        tableBody.innerHTML = html;
+    }
+
+    function renderHospitalIssueSummary(payload) {
+        const issues = payload.issue_summary || [];
+        const suggestions = payload.suggestions || [];
+        const representativeReviews = payload.representative_reviews || [];
+        const negCount = payload.neg || 0;
+        const totalCount = payload.total || 0;
+
+        const suggestionRows = suggestions.map(item => {
+            const priorityClass = item.priority === '高' ? 'danger' : (item.priority === '中' ? 'warning' : 'secondary');
+            const meta = item.count !== undefined
+                ? `<div class="small text-muted mt-1">影響 ${item.count} 則負評，占負評 ${item.percent}%</div>`
+                : '';
+            return `
+                <div class="border rounded p-3 bg-white mb-2">
+                    <div class="d-flex justify-content-between gap-3">
+                        <div>
+                            <div class="fw-bold text-dark">${escapeHTML(item.title)}</div>
+                            <div class="small text-muted mt-1">${escapeHTML(item.description)}</div>
+                            ${meta}
+                        </div>
+                        <span class="badge text-bg-${priorityClass} align-self-start">${escapeHTML(item.priority)}</span>
+                    </div>
+                </div>
+            `;
+        }).join('');
+
+        const representativeRows = representativeReviews.map(group => {
+            const reviewItems = group.reviews.map(review => `
+                <div class="border-start border-3 border-danger ps-3 py-2 mb-2 bg-white rounded-end">
+                    <div class="small text-dark">${escapeHTML(review.content)}</div>
+                    <div class="small text-muted mt-1"><i class="far fa-clock me-1"></i>${escapeHTML(review.time)}</div>
+                </div>
+            `).join('');
+
+            return `
+                <div class="mb-3">
+                    <button type="button" class="btn btn-sm btn-outline-danger rounded-pill mb-2" onclick="filterHospitalReviews('${escapeHTML(group.issue_category)}')">
+                        ${escapeHTML(group.issue_category)}
+                    </button>
+                    ${reviewItems}
+                </div>
+            `;
+        }).join('');
+
+        if (!issues.length) {
+            hospitalIssueSummary.classList.remove('d-none');
+            hospitalIssueSummary.innerHTML = `
+                <div class="border rounded p-3 bg-light">
+                    <div class="alert alert-light border mb-3">
+                        <strong class="text-dark">此醫院評論概況：</strong>
+                        共 ${totalCount} 則評論，尚無可分類的負面評論。
+                    </div>
+                    <h6 class="fw-bold text-primary mb-2"><i class="fas fa-lightbulb me-2"></i>改善建議</h6>
+                    ${suggestionRows}
+                    ${representativeRows ? `<h6 class="fw-bold text-danger mt-4 mb-2"><i class="fas fa-quote-left me-2"></i>代表性評論</h6>${representativeRows}` : ''}
+                </div>
+            `;
+            return;
+        }
+
+        const maxCount = issues[0].count || 1;
+        const issueRows = issues.map(issue => {
+            const percentOfNeg = negCount ? Math.round(issue.count / negCount * 100) : 0;
+            const barWidth = Math.max(Math.round(issue.count / maxCount * 100), 6);
+            return `
+                <button type="button" class="issue-rank w-100 text-start" onclick="filterHospitalReviews('${escapeHTML(issue.issue_category)}')">
+                    <div class="d-flex align-items-center flex-grow-1">
+                        <span class="rank-num">${percentOfNeg}%</span>
+                        <div class="flex-grow-1">
+                            <div class="fw-bold text-dark">${escapeHTML(issue.issue_category)}</div>
+                            <div class="progress mt-2" style="height: 6px;">
+                                <div class="progress-bar bg-danger" style="width: ${barWidth}%;"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <span class="badge bg-danger rounded-pill ms-3">${issue.count} 則</span>
+                </button>
+            `;
+        }).join('');
+
+        hospitalIssueSummary.classList.remove('d-none');
+        hospitalIssueSummary.innerHTML = `
+            <div class="border rounded p-3 bg-light">
+                <h6 class="fw-bold text-primary mb-2"><i class="fas fa-lightbulb me-2"></i>改善建議</h6>
+                <div class="mb-4">${suggestionRows}</div>
+                ${representativeRows ? `<h6 class="fw-bold text-danger mb-2"><i class="fas fa-quote-left me-2"></i>代表性評論</h6><div class="mb-4">${representativeRows}</div>` : ''}
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <div>
+                        <h6 class="fw-bold text-danger mb-1"><i class="fas fa-chart-pie me-2"></i>此醫院負評原因分析</h6>
+                        <div class="small text-muted">共 ${totalCount} 則評論，其中 ${negCount} 則負評。點選原因可篩選下方評論。</div>
+                    </div>
+                    <button type="button" class="btn btn-sm btn-outline-secondary" onclick="filterHospitalReviews('ALL')">
+                        全部評論
+                    </button>
+                </div>
+                ${issueRows}
+            </div>
+        `;
+    }
+
+    function filterHospitalReviews(issueCategory) {
+        renderReviewRows(currentModalReviews, issueCategory);
+    }
+
+    function openReviewModal(hospitalId, hospitalName, profileUrl) {
+        modalTitle.textContent = hospitalName + " - 最新評論";
+        if (hospitalProfileLink) {
+            hospitalProfileLink.href = profileUrl || '#';
+            hospitalProfileLink.classList.toggle('disabled', !profileUrl);
+            hospitalProfileLink.classList.remove('d-none');
+        }
+        tableBody.innerHTML = ''; 
+        currentModalReviews = [];
+        hospitalIssueSummary.classList.add('d-none');
+        hospitalIssueSummary.innerHTML = '';
+        loadingSpinner.classList.remove('d-none');
+        reviewListContent.classList.add('d-none');
+        reviewModal.show();
+
+        fetch(`/admin/get_reviews/${hospitalId}`)
+            .then(response => response.json())
+            .then(data => {
+                loadingSpinner.classList.add('d-none');
+                reviewListContent.classList.remove('d-none');
+                const payload = Array.isArray(data) ? { reviews: data, issue_summary: [], pos: 0, neg: 0, total: data.length } : data;
+                currentModalReviews = payload.reviews || [];
+                modalTitle.textContent = `${hospitalName} - 共 ${payload.total || currentModalReviews.length} 則評論`;
+                renderHospitalIssueSummary(payload);
+                renderReviewRows(currentModalReviews);
+            })
+            .catch(err => {
+                console.error('Error:', err);
+                tableBody.innerHTML = '<tr><td colspan="5" class="text-center text-danger p-4">載入失敗，請稍後再試</td></tr>';
+                loadingSpinner.classList.add('d-none');
+                reviewListContent.classList.remove('d-none');
+            });
+    }
+
+    function openIssueReviews(issueCategory) {
+        modalTitle.textContent = `負評原因「${issueCategory}」- 評論明細`;
+        tableBody.innerHTML = '';
+        currentModalReviews = [];
+        hospitalIssueSummary.classList.add('d-none');
+        hospitalIssueSummary.innerHTML = '';
+        loadingSpinner.classList.remove('d-none');
+        reviewListContent.classList.add('d-none');
+        reviewModal.show();
+
+        fetch(`/admin/get_issue_reviews/${encodeURIComponent(issueCategory)}`)
+            .then(response => response.json())
+            .then(data => {
+                loadingSpinner.classList.add('d-none');
+                reviewListContent.classList.remove('d-none');
+                modalTitle.textContent = `負評原因「${issueCategory}」- 共 ${data.length} 則評論`;
+                renderReviewRows(data);
+            })
+            .catch(err => {
+                console.error('Error:', err);
+                tableBody.innerHTML = '<tr><td colspan="5" class="text-center text-danger p-4">載入失敗，請稍後再試</td></tr>';
+                loadingSpinner.classList.add('d-none');
+                reviewListContent.classList.remove('d-none');
+            });
+    }
+</script>
+
+<script>
+    // 呼叫 AI 進行症狀趨勢分析
+    function generateTrendAnnouncement() {
+        const btn = document.getElementById('btn-analyze-trends');
+        const resultBox = document.getElementById('trend-ai-result-box');
+        const contentArea = document.getElementById('trend-ai-content');
+            
+        // 抓取頁面上的 CSRF Token
+        const csrfToken = document.querySelector('input[name="csrf_token"]').value;
+    
+        // 按鈕變成載入狀態
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>分析中...';
+            
+        fetch('/api/analyze_symptom_trends', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrfToken
+            }
+        })
+        .then(res => res.json())
+        .then(data => {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-redo me-1"></i>重新產生';
+                
+            if(data.result) {
+                contentArea.innerText = data.result;
+                resultBox.classList.remove('d-none'); // 顯示 AI 草稿框
+                resultBox.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            } else {
+                alert('分析失敗：' + (data.error || '未知錯誤'));
+            }
+        })
+        .catch(err => {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-magic me-1"></i>產生健康警示草稿';
+            alert('網路連線異常，請稍後再試。');
+        });
+    }
+    
+    // 將 AI 文字帶入到公告輸入框
+    function copyToAnnouncement() {
+        const aiText = document.getElementById('trend-ai-content').innerText;
+        const announcementInput = document.querySelector('input[name="content"]');
+            
+        if(announcementInput) {
+            announcementInput.value = aiText; 
+            announcementInput.focus(); 
+            
+            const originalBg = announcementInput.style.backgroundColor;
+            announcementInput.style.backgroundColor = '#fff3cd';
+            announcementInput.style.transition = 'background-color 0.5s';
+            
+            setTimeout(() => { 
+                announcementInput.style.backgroundColor = originalBg; 
+            }, 800);
+                
+            document.getElementById('trend-ai-result-box').classList.add('d-none');
+        }
+    }
+</script>
+
+<div class="modal fade" id="awardHistoryModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header bg-dark text-white">
+                <h5 class="modal-title fw-bold"><i class="fas fa-history me-2"></i>認證申請歷史紀錄</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="關閉"></button>
+            </div>
+            <div class="modal-body">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle">
+                        <thead class="table-light">
+                            <tr>
+                                <th>操作時間</th>
+                                <th>狀態</th>
+                                <th>醫院名稱</th>
+                                <th>申請項目</th>
+                                <th>備註</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% set award_history_state = namespace(has_items=false) %}
+                            {% for item in award_applications %}
+                                {% if item.status in ['approved', 'rejected'] %}
+                                {% set award_history_state.has_items = true %}
+                                <tr>
+                                    <td class="small text-muted">{{ item.reviewed_at or item.created_at }}</td>
+                                    <td>
+                                        <span class="badge {% if item.status == 'approved' %}text-bg-success{% else %}text-bg-danger{% endif %}">
+                                            {% if item.status == 'approved' %}已通過{% else %}已退回{% endif %}
+                                        </span>
+                                    </td>
+                                    <td class="fw-bold">{{ item.hospital_name }}</td>
+                                    <td>{{ item.department }} · {{ item.award_name }}</td>
+                                    <td class="small">{{ item.admin_note or '無' }}</td>
+                                </tr>
+                                {% endif %}
+                            {% endfor %}
+                            {% if not award_history_state.has_items %}
+                            <tr><td colspan="5" class="text-center text-muted">目前尚無歷史紀錄</td></tr>
+                            {% endif %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="hospitalHistoryModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header bg-dark text-white">
+                <h5 class="modal-title fw-bold"><i class="fas fa-history me-2"></i>審核歷史操作紀錄</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle">
+                        <thead class="table-light">
+                            <tr>
+                                <th width="20%">操作時間</th>
+                                <th width="20%">操作動作</th>
+                                <th width="25%">目標醫院</th>
+                                <th width="35%">備註說明</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% set hospital_history_state = namespace(has_items=false) %}
+                            {% for user in users %}
+                                {% for history in hospital_user_history.get(user[0], []) %}
+                                {% set hospital_history_state.has_items = true %}
+                                <tr>
+                                    <td class="small text-muted">{{ history.created_at }}</td>
+                                    <td>
+                                        <span class="badge {% if history.action == 'approved' %}text-bg-success{% elif history.action == 'rejected' %}text-bg-danger{% else %}text-bg-secondary{% endif %}">
+                                            {% if history.action == 'approved' %}已核准{% elif history.action == 'rejected' %}已退回{% elif history.action == 'pending' %}改回待審核{% else %}{{ history.action }}{% endif %}
+                                        </span>
+                                    </td>
+                                    <td>{{ history.hospital_name or user[11] or user[10] or '未綁定醫院' }}</td>
+                                    <td class="small">{{ history.note or '操作人員：' ~ (history.actor_username or '系統') }}</td>
+                                </tr>
+                                {% endfor %}
+                            {% endfor %}
+                            {% if not hospital_history_state.has_items %}
+                            <tr><td colspan="4" class="text-center text-muted">目前尚無歷史紀錄</td></tr>
+                            {% endif %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    let awardStatusFilter = 'pending';
+
+    function filterAwards() {
+        const keyword = document.getElementById('awardSearchInput')?.value.trim().toLowerCase() || '';
+        let visibleCount = 0;
+        
+        document.querySelectorAll('[data-award-row]').forEach(row => {
+            const statusMatched = row.dataset.status === awardStatusFilter;
+            const textMatched = !keyword || (row.dataset.searchText || '').toLowerCase().includes(keyword);
+            const visible = statusMatched && textMatched;
+            
+            if (visible) {
+                row.classList.remove('d-none');
+                visibleCount += 1;
+            } else {
+                row.classList.add('d-none');
+            }
+        });
+        
+        const emptyState = document.getElementById('awardEmptyStateRow');
+        const initialEmpty = document.getElementById('awardInitialEmptyRow');
+        
+        if (initialEmpty) initialEmpty.classList.add('d-none');
+        if (emptyState) emptyState.classList.toggle('d-none', visibleCount > 0);
+    }
+
+    document.querySelectorAll('.award-filter').forEach(button => {
+        button.addEventListener('click', () => {
+            awardStatusFilter = button.dataset.status;
+            
+            // 重置所有按鈕樣式
+            document.querySelectorAll('.award-filter').forEach(item => {
+                item.classList.remove('active', 'btn-warning', 'btn-success', 'btn-secondary', 'btn-primary');
+                if (item.dataset.status === 'pending') item.classList.add('btn-outline-warning');
+                if (item.dataset.status === 'approved') item.classList.add('btn-outline-success');
+            });
+            
+            // 套用點擊按鈕的專屬顏色
+            button.classList.add('active');
+            button.classList.remove('btn-outline-warning', 'btn-outline-success');
+            
+            if (button.dataset.status === 'pending') button.classList.add('btn-warning');
+            if (button.dataset.status === 'approved') button.classList.add('btn-success');
+            filterAwards();
+        });
+    });
+
+    const searchInput = document.getElementById('awardSearchInput');
+    if (searchInput) {
+        searchInput.addEventListener('input', filterAwards);
+    }
+
+    // 初始化自動過濾
+    filterAwards();
+});
+</script>
+
+</body>
+</html>

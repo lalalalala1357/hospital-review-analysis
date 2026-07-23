@@ -1,0 +1,17 @@
+flask
+flask-login
+flask-bcrypt
+flask-wtf
+flask-limiter
+pandas
+openpyxl
+selenium
+webdriver-manager
+snownlp
+captcha
+gunicorn
+python-dotenv
+google-generativeai
+jieba
+transformers
+torch

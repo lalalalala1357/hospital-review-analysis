@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<!--
+==========================================
+🔖 我的收藏：使用者收藏醫院清單與備註管理
+==========================================
+-->
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>我的收藏 | 醫療口碑監測平台</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        body { background: #f4f7f6; color: #25364a; font-family: "Segoe UI", "Microsoft JhengHei", sans-serif; }
+        .main-container { max-width: 1040px; margin: 28px auto; padding: 0 20px 44px; }
+        .page-head, .favorite-row { background: #fff; border: 1px solid #e4ebf3; border-radius: 8px; }
+        .page-head { padding: 20px 22px; margin-bottom: 16px; box-shadow: 0 4px 14px rgba(30,55,90,.04); }
+        .favorite-list { display: grid; gap: 10px; }
+        .favorite-row { padding: 14px 16px; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 14px; align-items: center; }
+        .hospital-name { color: #0066cc; font-weight: 900; text-decoration: none; }
+        .hospital-name:hover { text-decoration: underline; }
+        .meta-line { color: #6c7a89; font-size: .88rem; margin-top: 4px; }
+        .mini-stats { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+        .mini-stat { background: #f8fafc; border: 1px solid #edf2f7; border-radius: 8px; padding: 6px 10px; font-size: .82rem; font-weight: 800; }
+        .note-form { display: grid; grid-template-columns: minmax(180px, 1fr) auto; gap: 8px; margin-top: 10px; }
+        .note-form input { border-radius: 8px; }
+        .row-actions { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+        .empty-state { background: #fff; border: 1px dashed #d6dee8; border-radius: 8px; text-align: center; padding: 44px 18px; color: #8492a6; }
+        @media (max-width: 768px) {
+            .favorite-row { grid-template-columns: 1fr; }
+            .row-actions { justify-content: flex-start; }
+            .note-form { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+{% include 'navbar.html' %}
+
+<div class="main-container">
+    <div class="page-head d-flex justify-content-between align-items-start gap-3 flex-wrap">
+        <div>
+            <h2 class="fw-bold mb-1"><i class="fas fa-bookmark me-2 text-primary"></i>我的收藏醫院</h2>
+            <div class="text-muted">快速查看常追蹤的醫院，不需要每次重新搜尋。</div>
+        </div>
+        <a href="{{ url_for('google_page') }}" class="btn btn-primary fw-bold">
+            <i class="fas fa-plus me-1"></i>新增收藏
+        </a>
+    </div>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+            <div class="alert alert-{{ 'danger' if category == 'analyze_error' else 'success' }} alert-dismissible fade show" role="alert">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="關閉"></button>
+            </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <div class="favorite-list">
+        {% for item in favorites %}
+        <div class="favorite-row">
+            <div>
+                <a href="{{ url_for('hospital_profile', hospital_id=item.hospital_id) }}" class="hospital-name">{{ item.name }}</a>
+                <div class="meta-line"><i class="fas fa-location-dot me-1"></i>{{ item.address or '地址未提供' }}</div>
+                <div class="mini-stats">
+                    <span class="mini-stat">{{ item.review_count }} 則評論</span>
+                    <span class="mini-stat text-success">正評 {{ item.positive_rate }}%</span>
+                    <span class="mini-stat text-danger">負評 {{ item.negative_rate }}%</span>
+                    <span class="mini-stat">更新 {{ item.latest_update or '--' }}</span>
+                </div>
+                <form action="{{ url_for('update_favorite_note', hospital_id=item.hospital_id) }}" method="POST" class="note-form">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <input type="text" name="note" class="form-control form-control-sm" value="{{ item.note }}" placeholder="新增備註">
+                    <button type="submit" class="btn btn-sm btn-outline-success fw-bold">儲存</button>
+                </form>
+            </div>
+            <div class="row-actions">
+                <a href="{{ url_for('hospital_profile', hospital_id=item.hospital_id) }}" class="btn btn-sm btn-outline-primary fw-bold">查看</a>
+                <form action="{{ url_for('toggle_hospital_favorite', hospital_id=item.hospital_id) }}" method="POST" onsubmit="return confirm('確定要移除這間收藏醫院嗎？');">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <input type="hidden" name="action" value="remove">
+                    <button type="submit" class="btn btn-sm btn-outline-danger fw-bold">移除</button>
+                </form>
+            </div>
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <i class="fas fa-bookmark fa-3x opacity-50 mb-3"></i>
+            <h5 class="fw-bold text-dark">目前還沒有收藏醫院</h5>
+            <div class="mb-3">到醫院詳細檔案按「加入收藏」，之後就能在這裡快速查看。</div>
+            <a href="{{ url_for('google_page') }}" class="btn btn-primary fw-bold">去查詢醫院</a>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

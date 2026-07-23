@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<!--
+==========================================
+🏠 首頁：平台入口、醫院查詢與主要服務導覽
+==========================================
+-->
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <title>醫療口碑監測平台</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+
+  <style>
+    body {
+      margin: 0;
+      font-family: "Segoe UI", "Microsoft JhengHei", sans-serif;
+      background-color: #f4f7f6;
+      color: #25364a;
+      min-height: 100vh;
+    }
+
+    .main-content {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 42px 20px 56px;
+    }
+
+    .platform-hero {
+      display: grid;
+      grid-template-columns: minmax(0, 1.35fr) minmax(280px, 0.65fr);
+      gap: 24px;
+      align-items: stretch;
+      margin-bottom: 28px;
+    }
+
+    .hero-main, .health-alert {
+      background: #fff;
+      border: 1px solid #e8edf2;
+      border-radius: 8px;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.04);
+    }
+
+    .hero-main {
+      padding: 30px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
+
+    .eyebrow {
+      color: #0066cc;
+      font-weight: 800;
+      font-size: 0.88rem;
+      letter-spacing: 0.06em;
+      margin-bottom: 10px;
+    }
+
+    .hero-title {
+      font-size: clamp(2rem, 4vw, 3rem);
+      line-height: 1.16;
+      font-weight: 800;
+      margin: 0 0 14px;
+      letter-spacing: 0;
+    }
+
+    .hero-copy {
+      color: #5f7187;
+      font-size: 1.05rem;
+      line-height: 1.8;
+      max-width: 680px;
+      margin: 0;
+    }
+
+    .health-alert {
+      padding: 24px;
+      border-left: 5px solid #dc3545;
+    }
+
+    .alert-label {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      font-weight: 800;
+      color: #b02a37;
+      margin-bottom: 12px;
+    }
+
+    .alert-content {
+      color: #34495e;
+      line-height: 1.75;
+      margin: 0;
+    }
+
+    .service-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: end;
+      gap: 18px;
+      margin: 30px 0 16px;
+    }
+
+    .section-title {
+      font-size: 1.35rem;
+      font-weight: 800;
+      margin: 0;
+    }
+
+    .section-note {
+      color: #718196;
+      margin: 6px 0 0;
+    }
+
+    .service-layout {
+      display: grid;
+      grid-template-columns: minmax(320px, 1.1fr) minmax(0, 1.4fr);
+      gap: 18px;
+      align-items: stretch;
+    }
+
+    .service-card {
+      background: #fff;
+      border: 1px solid #e8edf2;
+      border-radius: 8px;
+      padding: 22px;
+      text-decoration: none;
+      color: inherit;
+      min-height: 214px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.04);
+      transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+    }
+
+    .service-card:hover {
+      transform: translateY(-3px);
+      border-color: #b9d9fb;
+      box-shadow: 0 10px 24px rgba(0,102,204,0.11);
+      color: inherit;
+    }
+
+    .service-icon {
+      width: 48px;
+      height: 48px;
+      border-radius: 8px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      background: #eef6ff;
+      color: #0066cc;
+      font-size: 21px;
+      margin-bottom: 16px;
+    }
+
+    .service-card.health .service-icon { background: #eaf9fb; color: #17a2b8; }
+    .service-card.region .service-icon { background: #eef8ef; color: #198754; }
+    .service-card.compare .service-icon { background: #fff6e6; color: #f59f00; }
+    .service-card.rank .service-icon { background: #fff0f1; color: #dc3545; }
+
+    .hospital-card {
+      background: #fff;
+      border: 1px solid #b9d9fb;
+      border-radius: 8px;
+      padding: 24px;
+      min-height: 214px;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.04);
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    .hospital-card-top {
+      display: flex;
+      gap: 15px;
+      align-items: flex-start;
+      margin-bottom: 18px;
+    }
+
+    .hospital-card .service-icon {
+      flex-shrink: 0;
+      margin-bottom: 0;
+    }
+
+    .hospital-actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    .hospital-action {
+      border: 1px solid #e8edf2;
+      border-radius: 8px;
+      padding: 13px 14px;
+      text-decoration: none;
+      color: #25364a;
+      background: #f8fafc;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      font-weight: 800;
+      transition: 0.18s ease;
+    }
+
+    .hospital-action:hover {
+      color: #0066cc;
+      border-color: #b9d9fb;
+      background: #eef6ff;
+    }
+
+    .secondary-services {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 18px;
+    }
+
+    .service-title {
+      font-size: 1.05rem;
+      font-weight: 800;
+      margin-bottom: 8px;
+    }
+
+    .service-desc {
+      color: #718196;
+      line-height: 1.65;
+      margin: 0 0 18px;
+      font-size: 0.95rem;
+    }
+
+    .service-action {
+      color: #0066cc;
+      font-weight: 800;
+      font-size: 0.92rem;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    @media (max-width: 992px) {
+      .platform-hero { grid-template-columns: 1fr; }
+      .service-layout { grid-template-columns: 1fr; }
+      .secondary-services { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    }
+
+    @media (max-width: 576px) {
+      .main-content { padding: 28px 16px 42px; }
+      .hero-main, .health-alert, .service-card { padding: 20px; }
+      .service-head { display: block; }
+      .hospital-card { padding: 20px; }
+      .hospital-card-top { display: block; }
+      .hospital-card .service-icon { margin-bottom: 16px; }
+      .hospital-actions, .secondary-services { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+  {% include 'navbar.html' %}
+
+  <main class="main-content">
+    <section class="platform-hero">
+      <div class="hero-main">
+        <div class="eyebrow">MEDICAL REVIEW INTELLIGENCE</div>
+        <h1 class="hero-title">醫療口碑監測平台</h1>
+        <p class="hero-copy">
+          整合醫院評論分析、症狀導診、醫院比較與科別推薦，協助使用者更快找到合適的就醫資訊。
+        </p>
+      </div>
+
+      <aside class="health-alert">
+        <div class="alert-label">
+          <i class="fas fa-bullhorn"></i>
+          近期健康提醒
+        </div>
+        <p class="alert-content">
+          {% if active_announcement %}
+            {{ active_announcement }}
+          {% else %}
+            可使用症狀導診初步整理不適狀況；若出現胸悶、呼吸困難、高燒不退或劇烈疼痛，請儘速就醫。
+          {% endif %}
+        </p>
+      </aside>
+    </section>
+
+    <section>
+      <div class="service-head">
+        <div>
+          <h2 class="section-title">主要服務</h2>
+          <p class="section-note">選擇要使用的服務，開始查詢、比較或取得導診建議。</p>
+        </div>
+      </div>
+
+      <div class="service-layout">
+        <div class="hospital-card">
+          <div class="hospital-card-top">
+            <div class="service-icon"><i class="fas fa-hospital"></i></div>
+            <div>
+              <div class="service-title">醫院查詢</div>
+              <p class="service-desc">已知道醫院名稱時可直接查詢；還在尋找醫院時，可先依地區瀏覽清單。</p>
+            </div>
+          </div>
+          <div class="hospital-actions">
+            <a class="hospital-action" href="{{ url_for('google_page') }}">
+              <span><i class="fas fa-keyboard me-2 text-primary"></i>名稱查詢</span>
+              <i class="fas fa-arrow-right"></i>
+            </a>
+            <a class="hospital-action" href="{{ url_for('region') }}">
+              <span><i class="fas fa-map-location-dot me-2 text-success"></i>地區瀏覽</span>
+              <i class="fas fa-arrow-right"></i>
+            </a>
+          </div>
+        </div>
+
+        <div class="secondary-services">
+          <a class="service-card health" href="{{ url_for('symptom_checker') }}">
+            <div>
+              <div class="service-icon"><i class="fas fa-stethoscope"></i></div>
+              <div class="service-title">症狀導診</div>
+              <p class="service-desc">描述目前症狀，取得可能適合的就診科別與就醫提醒。</p>
+            </div>
+            <span class="service-action">前往導診 <i class="fas fa-arrow-right"></i></span>
+          </a>
+
+          <a class="service-card compare" href="{{ url_for('pk_page') }}">
+            <div>
+              <div class="service-icon"><i class="fas fa-scale-balanced"></i></div>
+              <div class="service-title">醫院比較</div>
+              <p class="service-desc">比較兩家醫院的滿意度、正負評分布與 AI 綜合分析。</p>
+            </div>
+            <span class="service-action">開始比較 <i class="fas fa-arrow-right"></i></span>
+          </a>
+
+          <a class="service-card rank" href="{{ url_for('ranking_page') }}">
+            <div>
+              <div class="service-icon"><i class="fas fa-trophy"></i></div>
+              <div class="service-title">科別推薦</div>
+              <p class="service-desc">依科別與地區查看推薦醫院，快速縮小就醫選擇範圍。</p>
+            </div>
+            <span class="service-action">查看推薦 <i class="fas fa-arrow-right"></i></span>
+          </a>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

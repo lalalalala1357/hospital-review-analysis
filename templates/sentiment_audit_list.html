@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>情緒分析人工抽驗 | 醫療口碑監測平台</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        body { background: #f4f7f6; color: #25364a; font-family: "Segoe UI", "Microsoft JhengHei", sans-serif; }
+        .main-container { max-width: 1120px; margin: 28px auto; padding: 0 20px 44px; }
+        .page-head, .audit-panel { background: #fff; border: 1px solid #e4ebf3; border-radius: 8px; box-shadow: 0 4px 14px rgba(30,55,90,.04); }
+        .page-head { padding: 20px 22px; margin-bottom: 16px; }
+        .audit-panel { overflow: hidden; }
+        .table { margin-bottom: 0; }
+        .table thead th { background: #f8fafc; color: #52667d; font-size: .86rem; }
+        .status-badge { border-radius: 999px; padding: 5px 10px; font-weight: 800; font-size: .78rem; }
+        .status-pending { background: #fff6e6; color: #b76e00; }
+        .status-completed { background: #eaf8ef; color: #157347; }
+        .empty-state { padding: 44px 18px; text-align: center; color: #8492a6; }
+        @media (max-width: 768px) {
+            .table-responsive { border: 0; }
+        }
+    </style>
+</head>
+<body>
+{% include 'navbar.html' %}
+
+<div class="main-container">
+    <div class="page-head d-flex justify-content-between align-items-start gap-3 flex-wrap">
+        <div>
+            <h2 class="fw-bold mb-1"><i class="fas fa-clipboard-check me-2 text-primary"></i>情緒分析人工抽驗</h2>
+            <div class="text-muted">隨機抽取 Google Maps 醫院評論，人工標記後比對模型正負向判斷。</div>
+        </div>
+        <button type="button" class="btn btn-primary fw-bold" id="createAuditBtn">
+            <i class="fas fa-plus me-1"></i>建立新抽驗批次
+        </button>
+    </div>
+
+    <div id="auditAlert" class="alert d-none" role="alert"></div>
+    <input type="hidden" id="csrfToken" value="{{ csrf_token() }}">
+
+    <div class="audit-panel">
+        {% if batches %}
+        <div class="table-responsive">
+            <table class="table table-hover align-middle">
+                <thead>
+                    <tr>
+                        <th>批次名稱</th>
+                        <th>建立時間</th>
+                        <th>狀態</th>
+                        <th>樣本數</th>
+                        <th class="text-end">操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for batch in batches %}
+                    <tr>
+                        <td class="fw-bold">{{ batch.batch_name or ('情緒分析人工抽驗 #' ~ batch.id) }}</td>
+                        <td>{{ batch.created_at or '--' }}</td>
+                        <td>
+                            {% if batch.status == 'completed' %}
+                            <span class="status-badge status-completed">已完成</span>
+                            {% else %}
+                            <span class="status-badge status-pending">待標記</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ batch.actual_sample_size or batch.sample_size or 0 }}</td>
+                        <td class="text-end">
+                            <a href="{{ url_for('sentiment_audit_detail', batch_id=batch.id) }}" class="btn btn-sm btn-outline-primary fw-bold">
+                                {% if batch.status == 'completed' %}查看結果{% else %}繼續標記{% endif %}
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <i class="fas fa-clipboard-list fa-3x opacity-50 mb-3"></i>
+            <h5 class="fw-bold text-dark">尚未建立抽驗批次</h5>
+            <div>建立第一個批次後，系統會隨機抽取最多 30 則正負向評論。</div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<script>
+    const createBtn = document.getElementById('createAuditBtn');
+    const alertBox = document.getElementById('auditAlert');
+    const csrfToken = document.getElementById('csrfToken').value;
+
+    function showAlert(message, type = 'danger') {
+        alertBox.className = `alert alert-${type}`;
+        alertBox.textContent = message;
+    }
+
+    createBtn.addEventListener('click', async () => {
+        createBtn.disabled = true;
+        createBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>建立中';
+        try {
+            const response = await fetch('{{ url_for("create_sentiment_audit_batch") }}', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
+                body: JSON.stringify({})
+            });
+            const data = await response.json();
+            if (!response.ok || !data.success) throw new Error(data.message || '建立抽驗批次失敗');
+            window.location.href = data.redirect_url;
+        } catch (error) {
+            showAlert(error.message);
+            createBtn.disabled = false;
+            createBtn.innerHTML = '<i class="fas fa-plus me-1"></i>建立新抽驗批次';
+        }
+    });
+</script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

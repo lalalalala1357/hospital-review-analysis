@@ -1,0 +1,354 @@
+<!--
+==========================================
+🧭 共用導覽列：公告跑馬燈、服務入口、後台入口與登出按鈕
+==========================================
+-->
+{% if active_announcement %}
+<div class="announcement-bar">
+    <div class="announcement-content">
+        <i class="fas fa-bullhorn me-2"></i> {{ active_announcement }}
+    </div>
+</div>
+
+<style>
+    .announcement-bar {
+        background: #fff3cd; /* 醒目的淡黃色 */
+        color: #856404;
+        padding: 8px 0;
+        font-size: 15px;
+        font-weight: bold;
+        overflow: hidden;
+        border-bottom: 1px solid #ffeeba;
+    }
+    .announcement-content {
+        white-space: nowrap;
+        display: inline-block;
+        padding-left: 100%;
+        animation: marquee 20s linear infinite;
+    }
+    @keyframes marquee {
+        0%   { transform: translate(0, 0); }
+        100% { transform: translate(-100%, 0); }
+    }
+</style>
+{% endif %}
+
+<nav class="navbar">
+  <a href="{{ url_for('index') }}" class="brand">
+    <i class="fas fa-heartbeat" style="margin-right: 8px;"></i>
+    醫療口碑監測平台
+  </a>
+
+  <div class="nav-links">
+    <a href="{{ url_for('index') }}" class="nav-link">
+      <i class="fas fa-home"></i> 首頁
+    </a>
+
+    <div class="nav-item dropdown-nav">
+      <button type="button" class="nav-link nav-dropdown-toggle" id="serviceMenuToggle" aria-expanded="false">
+        <i class="fas fa-layer-group"></i> 服務入口
+        <i class="fas fa-chevron-down dropdown-caret"></i>
+      </button>
+      <div class="nav-dropdown-menu">
+        <a href="{{ url_for('google_page') }}">
+          <i class="fas fa-magnifying-glass"></i>
+          <span>
+            <strong>名稱查詢</strong>
+            <small>輸入醫院名稱查看評論分析</small>
+          </span>
+        </a>
+        <a href="{{ url_for('region') }}">
+          <i class="fas fa-map-location-dot"></i>
+          <span>
+            <strong>地區瀏覽</strong>
+            <small>依縣市區域選擇醫院</small>
+          </span>
+        </a>
+        <a href="{{ url_for('symptom_checker') }}">
+          <i class="fas fa-stethoscope"></i>
+          <span>
+            <strong>症狀導診</strong>
+            <small>依症狀取得就醫方向</small>
+          </span>
+        </a>
+        <a href="{{ url_for('pk_page') }}">
+          <i class="fas fa-scale-balanced"></i>
+          <span>
+            <strong>醫院比較</strong>
+            <small>比較兩家醫院口碑表現</small>
+          </span>
+        </a>
+        <a href="{{ url_for('ranking_page') }}">
+          <i class="fas fa-list-check"></i>
+          <span>
+            <strong>科別推薦</strong>
+            <small>查看各科別推薦名單</small>
+          </span>
+        </a>
+        {% if current_user.role != 'hospital' %}
+        <a href="{{ url_for('favorites_page') }}">
+          <i class="fas fa-bookmark"></i>
+          <span>
+            <strong>我的收藏</strong>
+            <small>查看已收藏的醫院清單</small>
+          </span>
+        </a>
+        {% endif %}
+      </div>
+    </div>
+
+    {% if current_user.is_admin %}
+    <a href="{{ url_for('admin_page') }}" class="nav-link admin-nav-link">
+      <i class="fas fa-screwdriver-wrench"></i> 管理後台
+    </a>
+    {% elif current_user.role == 'hospital' and current_user.approval_status == 'approved' %}
+    <a href="{{ url_for('hospital_dashboard') }}" class="nav-link admin-nav-link">
+      <i class="fas fa-hospital-user"></i> 院方儀表板
+    </a>
+    <a href="{{ url_for('hospital_notifications_page') }}" class="nav-link admin-nav-link notification-nav-link">
+      <span class="notification-icon-wrap">
+        <i class="fas fa-bell"></i>
+        {% if unread_hospital_notifications and unread_hospital_notifications > 0 %}
+        <span class="notification-dot">{{ unread_hospital_notifications if unread_hospital_notifications < 10 else '9+' }}</span>
+        {% endif %}
+      </span>
+      通知中心
+    </a>
+    {% endif %}
+
+    <a href="{{ url_for('logout') }}" class="nav-link logout-btn">
+      <i class="fas fa-sign-out-alt"></i> 登出
+    </a>
+  </div>
+</nav>
+
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+
+<style>
+  :root {
+    --medical-blue: #0066cc;
+    --medical-dark: #004c99;
+  }
+
+  .navbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 24px;
+    min-height: 64px;
+    background: white;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+    position: sticky;
+    top: 0;
+    z-index: 5000;
+    flex-wrap: wrap;
+    gap: 15px;
+  }
+
+  .brand {
+    font-weight: 700;
+    font-size: 20px;
+    color: var(--medical-blue);
+    display: flex;
+    align-items: center;
+    letter-spacing: 0.5px;
+    text-decoration: none;
+    cursor: pointer;
+    transition: opacity 0.2s;
+    white-space: nowrap;
+  }
+
+  .brand:hover {
+    opacity: 0.8;
+    color: var(--medical-blue);
+  }
+
+  .nav-links {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+
+  .nav-item {
+    position: relative;
+  }
+
+  .nav-link {
+    color: #555;
+    text-decoration: none;
+    font-size: 15px;
+    padding: 8px 16px;
+    border-radius: 50px;
+    transition: all 0.2s ease;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    white-space: nowrap;
+    border: 0;
+    background: transparent;
+    cursor: pointer;
+    font-family: inherit;
+  }
+
+  .nav-link:hover {
+    background: #f0f7ff;
+    color: var(--medical-blue);
+  }
+
+  .nav-dropdown-toggle {
+    border: 1px solid #e4eaf2;
+    background: #f8fbff;
+  }
+
+  .admin-nav-link {
+    color: var(--medical-blue);
+    border-color: rgba(0, 102, 204, 0.35);
+    font-weight: 700;
+  }
+
+  .notification-nav-link {
+    position: relative;
+  }
+
+  .notification-icon-wrap {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .notification-dot {
+    position: absolute;
+    top: -8px;
+    right: -10px;
+    min-width: 17px;
+    height: 17px;
+    padding: 0 4px;
+    border-radius: 999px;
+    background: #dc3545;
+    color: #fff;
+    border: 2px solid #fff;
+    font-size: 10px;
+    line-height: 13px;
+    font-weight: 800;
+    text-align: center;
+  }
+
+  .dropdown-caret {
+    font-size: 11px;
+    opacity: 0.75;
+  }
+
+  .nav-dropdown-menu {
+    position: absolute;
+    right: 0;
+    top: calc(100% + 10px);
+    min-width: 310px;
+    background: #fff;
+    border: 1px solid #e5edf5;
+    border-radius: 8px;
+    box-shadow: 0 18px 45px rgba(21, 42, 75, 0.16);
+    padding: 8px;
+    display: none;
+    z-index: 5100;
+  }
+
+  .dropdown-nav.menu-open .nav-dropdown-menu,
+  .dropdown-nav:focus-within .nav-dropdown-menu {
+    display: grid;
+    gap: 4px;
+  }
+
+  .nav-dropdown-menu a {
+    display: grid;
+    grid-template-columns: 28px 1fr;
+    gap: 10px;
+    align-items: start;
+    padding: 10px;
+    border-radius: 7px;
+    color: #24364d;
+    text-decoration: none;
+  }
+
+  .nav-dropdown-menu a:hover {
+    background: #f0f7ff;
+    color: var(--medical-blue);
+  }
+
+  .nav-dropdown-menu i {
+    margin-top: 3px;
+    color: var(--medical-blue);
+    text-align: center;
+  }
+
+  .nav-dropdown-menu strong,
+  .nav-dropdown-menu small {
+    display: block;
+    line-height: 1.35;
+  }
+
+  .nav-dropdown-menu strong {
+    font-size: 14px;
+  }
+
+  .nav-dropdown-menu small {
+    color: #6b7b8d;
+    font-size: 12px;
+    margin-top: 2px;
+  }
+
+  .nav-link.logout-btn {
+    border: 1px solid #e0e0e0;
+  }
+
+  .nav-link.logout-btn:hover {
+    background: #fff0f0;
+    color: #dc3545;
+    border-color: #ffd6d6;
+  }
+
+  @media (max-width: 760px) {
+    .navbar {
+      align-items: flex-start;
+    }
+
+    .nav-links {
+      width: 100%;
+      justify-content: flex-start;
+    }
+
+    .nav-item {
+      position: static;
+    }
+
+    .nav-dropdown-menu {
+      left: 16px;
+      right: 16px;
+      min-width: 0;
+      width: auto;
+    }
+  }
+</style>
+
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    const serviceMenu = document.querySelector('.dropdown-nav');
+    const serviceToggle = document.getElementById('serviceMenuToggle');
+    if (!serviceMenu || !serviceToggle) return;
+
+    serviceToggle.addEventListener('click', event => {
+      event.preventDefault();
+      event.stopPropagation();
+      const isOpen = serviceMenu.classList.toggle('menu-open');
+      serviceToggle.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+    });
+
+    document.addEventListener('click', event => {
+      if (serviceMenu.contains(event.target)) return;
+      serviceMenu.classList.remove('menu-open');
+      serviceToggle.setAttribute('aria-expanded', 'false');
+    });
+  });
+</script>

@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<!--
+==========================================
+🗺️ 地區選院：依縣市瀏覽醫院與最後分析時間
+==========================================
+-->
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>依地區選擇醫院</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
+    
+    <style>
+        body { 
+            background-color: #f4f7f6;
+            font-family: 'Segoe UI', "Microsoft JhengHei", sans-serif;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+
+        .main-container {
+            max-width: 1000px;
+            margin: 40px auto;
+            padding: 0 20px;
+            width: 100%;
+        }
+        
+        .page-header { text-align: center; margin-bottom: 40px; }
+        .page-header h2 { color: #2c3e50; font-weight: 700; }
+        .page-header p { color: #6c757d; }
+
+        /* 區域卡片 */
+        .region-card { 
+            cursor: pointer; transition: all 0.3s ease; border: none;
+            background: white; border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.02); height: 100%;
+            position: relative; overflow: hidden;
+        }
+        .region-card::after {
+            content: ''; position: absolute; bottom: 0; left: 0; width: 100%; height: 4px;
+            background: #e0e0e0; transition: 0.3s;
+        }
+        .region-card:hover { transform: translateY(-5px); box-shadow: 0 10px 20px rgba(0,0,0,0.08); }
+
+        /* 區域顏色 */
+        .region-btn-north:hover .region-card::after, .active-north .region-card::after { background: #0d6efd; }
+        .region-btn-north:hover .region-card i, .active-north .region-card i { color: #0d6efd; }
+        
+        .region-btn-central:hover .region-card::after, .active-central .region-card::after { background: #198754; }
+        .region-btn-central:hover .region-card i, .active-central .region-card i { color: #198754; }
+
+        .region-btn-south:hover .region-card::after, .active-south .region-card::after { background: #dc3545; }
+        .region-btn-south:hover .region-card i, .active-south .region-card i { color: #dc3545; }
+
+        .region-btn-east:hover .region-card::after, .active-east .region-card::after { background: #0dcaf0; }
+        .region-btn-east:hover .region-card i, .active-east .region-card i { color: #0dcaf0; }
+
+        .active-card { background-color: #fff; box-shadow: 0 0 0 2px rgba(13, 110, 253, 0.1); }
+
+        /* 醫院按鈕 */
+        .hospital-btn { 
+            margin: 6px; border-radius: 50px; transition: all 0.2s ease; 
+            font-weight: 500; padding: 8px 16px; background-color: white;
+            color: #555; border: 1px solid #e0e0e0;
+        }
+        .hospital-btn:hover { 
+            transform: scale(1.05); box-shadow: 0 4px 12px rgba(0, 102, 204, 0.2); 
+            border-color: #0066cc; color: #0066cc; background-color: white;
+        }
+        
+        .city-section { 
+            background: white; padding: 30px; border-radius: 16px; margin-bottom: 25px; 
+            box-shadow: 0 4px 15px rgba(0,0,0,0.03); border: 1px solid #fff;
+        }
+        .city-title { 
+            border-left: 5px solid #0066cc; padding-left: 15px; margin-bottom: 20px; 
+            font-weight: 700; color: #2c3e50; 
+        }
+        .empty-state-card {
+            background: white; border-radius: 16px; padding: 60px 20px;
+            text-align: center; box-shadow: 0 4px 15px rgba(0,0,0,0.03);
+        }
+    </style>
+</head>
+<body>
+
+{% include 'navbar.html' %}
+
+<div class="main-container">
+    
+    <div class="page-header animate__animated animate__fadeInDown">
+        <h2><i class="fas fa-map-marked-alt me-2 text-primary"></i>依地區選擇醫院</h2>
+        <p class="mb-0 mt-2">請先選擇您所在的區域，系統將列出該區所有醫院</p>
+    </div>
+
+    <div class="row text-center mb-5 g-3 animate__animated animate__fadeIn">
+        <div class="col-6 col-md-3 region-btn-north {% if selected_region == 'north' %}active-north{% endif %}">
+            <a href="{{ url_for('region', region='north') }}" class="text-decoration-none">
+                <div class="card region-card w-100 p-3 h-100 {% if selected_region == 'north' %}active-card{% endif %}">
+                    <div class="card-body d-flex flex-column justify-content-center align-items-center">
+                        <i class="fas fa-city fa-2x mb-3 text-secondary"></i>
+                        <h5 class="mb-0 fw-bold text-dark">北部區域</h5>
+                    </div>
+                </div>
+            </a>
+        </div>
+        <div class="col-6 col-md-3 region-btn-central {% if selected_region == 'central' %}active-central{% endif %}">
+            <a href="{{ url_for('region', region='central') }}" class="text-decoration-none">
+                <div class="card region-card w-100 p-3 h-100 {% if selected_region == 'central' %}active-card{% endif %}">
+                    <div class="card-body d-flex flex-column justify-content-center align-items-center">
+                        <i class="fas fa-tree fa-2x mb-3 text-secondary"></i>
+                        <h5 class="mb-0 fw-bold text-dark">中部區域</h5>
+                    </div>
+                </div>
+            </a>
+        </div>
+        <div class="col-6 col-md-3 region-btn-south {% if selected_region == 'south' %}active-south{% endif %}">
+            <a href="{{ url_for('region', region='south') }}" class="text-decoration-none">
+                <div class="card region-card w-100 p-3 h-100 {% if selected_region == 'south' %}active-card{% endif %}">
+                    <div class="card-body d-flex flex-column justify-content-center align-items-center">
+                        <i class="fas fa-sun fa-2x mb-3 text-secondary"></i>
+                        <h5 class="mb-0 fw-bold text-dark">南部區域</h5>
+                    </div>
+                </div>
+            </a>
+        </div>
+        <div class="col-6 col-md-3 region-btn-east {% if selected_region == 'east' %}active-east{% endif %}">
+            <a href="{{ url_for('region', region='east') }}" class="text-decoration-none">
+                <div class="card region-card w-100 p-3 h-100 {% if selected_region == 'east' %}active-card{% endif %}">
+                    <div class="card-body d-flex flex-column justify-content-center align-items-center">
+                        <i class="fas fa-umbrella-beach fa-2x mb-3 text-secondary"></i>
+                        <h5 class="mb-0 fw-bold text-dark">東部區域</h5>
+                    </div>
+                </div>
+            </a>
+        </div>
+    </div>
+
+    {% if selected_region and city_hospitals %}
+        <div class="animate__animated animate__fadeInUp">
+            {% for city, hospitals in city_hospitals.items() %}
+                <div class="city-section">
+                    <h4 class="city-title">
+                        <i class="fas fa-map-marker-alt me-2"></i>{{ city }}
+                    </h4>
+                    <div class="d-flex flex-wrap">
+                        {% for hospital in hospitals %}
+                            <div class="btn-group m-1">
+                                <button type="button" class="btn hospital-btn m-0" onclick='submitHospital({{ hospital | tojson }})'>
+                                    {{ hospital }}
+                                </button>
+                                {% if current_user.is_admin %}
+                                    <a class="btn hospital-btn m-0 border-start-0" href="{{ url_for('hospital_profile_by_name', hospital_name=hospital) }}" title="查看檔案">
+                                        <i class="fas fa-id-card"></i>
+                                    </a>
+                                {% endif %}
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    {% elif selected_region %}
+        <div class="empty-state-card animate__animated animate__pulse">
+            <i class="fas fa-folder-open fa-3x mb-3 text-warning"></i>
+            <h4 class="text-secondary">此區域目前尚無醫院資料</h4>
+            <p class="text-muted mb-0">請確認 Excel 資料庫或選擇其他區域。</p>
+        </div>
+    {% else %}
+        <div class="empty-state-card animate__animated animate__fadeInUp">
+            <div class="mb-3">
+                <i class="fas fa-mouse-pointer fa-4x text-primary opacity-25"></i>
+            </div>
+            <h4 class="fw-light text-secondary">請點選上方的區域按鈕</h4>
+            <p class="text-muted">系統將會列出該區各縣市的醫院名單</p>
+        </div>
+    {% endif %}
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+<div id="loadingOverlay" class="d-none">
+    <div class="loading-content text-center">
+        <div class="spinner-border text-light mb-4" style="width: 4rem; height: 4rem;" role="status">
+            <span class="visually-hidden">Loading...</span>
+        </div>
+        
+        <h3 class="text-white fw-bold mb-3">正在分析中，請稍候...</h3>
+        
+        <p id="loadingText" class="text-white-50 fs-5">正在啟動爬蟲...</p>
+        
+        <div class="progress mt-3" style="height: 6px; width: 300px; margin: 0 auto;">
+            <div class="progress-bar progress-bar-striped progress-bar-animated bg-info" role="progressbar" style="width: 100%"></div>
+        </div>
+    </div>
+</div>
+
+<style>
+    /* 遮罩背景 (改回原來的半透明黑) */
+    #loadingOverlay {
+        position: fixed;
+        top: 0; left: 0;
+        width: 100%; height: 100%;
+        background-color: rgba(0, 0, 0, 0.85); /* 這是標準版顏色 */
+        z-index: 9999;
+        display: flex; justify-content: center; align-items: center;
+        backdrop-filter: blur(5px);
+        transition: opacity 0.3s ease;
+    }
+
+    .loading-content { animation: fadeInUp 0.5s ease; }
+    
+    @keyframes fadeInUp {
+        from { opacity: 0; transform: translateY(20px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+</style>
+
+<script>
+    // 輪播文字邏輯
+    const loadingMessages = [
+        "🚀 正在啟動 Google Maps...",
+        "🔍 正在搜尋目標醫院...",
+        "🤖 AI 正在閱讀並分析情緒...",
+        "📊 正在生成數據報表...",
+        "💾 寫入資料庫中..."
+    ];
+
+    function submitHospital(hospitalName) {
+        // 1. 顯示遮罩讓畫面有在讀取的感覺
+        const overlay = document.getElementById('loadingOverlay');
+        const textElement = document.getElementById('loadingText');
+        overlay.classList.remove('d-none');
+        textElement.innerText = "正在前往分析頁面...";
+
+        // 2. 🌟 關鍵修改：不要再用 POST 提交表單了！直接帶參數跳轉到 google 頁面
+        window.location.href = `/google?hospital=${encodeURIComponent(hospitalName)}`;
+    }
+</script>
+
+</body>
+</html>

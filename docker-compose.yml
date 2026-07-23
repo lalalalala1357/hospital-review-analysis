@@ -1,0 +1,26 @@
+services:
+  hospital-sentiment:
+    build: .
+    container_name: hospital-sentiment
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      FLASK_SECRET_KEY: ${FLASK_SECRET_KEY:-change-this-during-demo}
+      CHROME_BIN: /usr/bin/chromium
+      CHROMEDRIVER_PATH: /usr/bin/chromedriver
+      SELENIUM_HEADLESS: "1"
+      SELENIUM_HEADLESS_MODE: "new"
+    ports:
+      - "5007:5007"
+    volumes:
+      - ./hospital_reviews.db:/app/hospital_reviews.db
+      - ./data:/app/data
+      - ./static/uploads:/app/static/uploads
+      - ./Chrome_Spider_Profile:/app/Chrome_Spider_Profile
+      - ./debug:/app/debug
+      - hf_cache:/app/.cache/huggingface
+    shm_size: "1gb"
+
+volumes:
+  hf_cache:

@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<!--
+==========================================
+🧾 醫院 A4 報告：提供列印與匯出用的整理版醫院分析
+==========================================
+-->
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ profile.hospital.name }} A4 報告 | 醫療口碑監測平台</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        * { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+        body { margin: 0; background: #eef2f6; color: #1f3147; font-family: "Segoe UI", "Microsoft JhengHei", sans-serif; }
+        .toolbar { max-width: 920px; margin: 18px auto 0; padding: 0 18px; display: flex; justify-content: flex-end; gap: 8px; }
+        .toolbar a, .toolbar button { border: 1px solid #cfd9e5; background: #fff; color: #25364a; border-radius: 8px; padding: 8px 12px; font-weight: 800; text-decoration: none; cursor: pointer; }
+        .toolbar button { background: #0066cc; border-color: #0066cc; color: #fff; }
+        .page { width: 794px; min-height: 1123px; margin: 18px auto 36px; padding: 54px 56px 46px; background: #fff; box-shadow: 0 18px 45px rgba(30,55,90,.13); }
+        .report-label { color: #0066cc; font-size: 13px; font-weight: 900; letter-spacing: .12em; text-transform: uppercase; }
+        .header { display: grid; grid-template-columns: minmax(0, 1fr) 120px; gap: 28px; align-items: start; border-bottom: 3px solid #0066cc; padding-bottom: 18px; margin-bottom: 14px; }
+        h1 { margin: 6px 0 10px; font-size: 28px; line-height: 1.2; color: #12263d; }
+        .meta { color: #66778a; font-size: 12px; line-height: 1.7; }
+        .score-box { border: 1px solid #cfe0f2; background: #f3f8fd; border-radius: 8px; text-align: center; padding: 15px 8px; }
+        .score-box .label { font-size: 12px; font-weight: 800; color: #52667d; }
+        .score-box .score { font-size: 36px; color: #0066cc; font-weight: 900; line-height: 1.1; margin-top: 6px; }
+        .score-box .unit { font-size: 12px; color: #52667d; }
+        .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin: 14px 0; }
+        .stat { border: 1px solid #e1e9f2; border-radius: 8px; padding: 13px 12px; background: #fbfdff; }
+        .stat .name { color: #66778a; font-size: 12px; font-weight: 800; margin-bottom: 6px; }
+        .stat .value { font-size: 24px; font-weight: 900; color: #1f3147; }
+        .green { color: #198754 !important; }
+        .red { color: #cf3348 !important; }
+        .grid { display: grid; grid-template-columns: 1fr 1.22fr; gap: 12px; margin-bottom: 12px; }
+        .panel { border: 1px solid #e1e9f2; border-radius: 8px; padding: 16px; }
+        .panel-title { font-weight: 900; margin-bottom: 14px; color: #1f3147; }
+        .sentiment-box { display: grid; grid-template-columns: 126px 1fr; align-items: center; gap: 18px; }
+        .donut-svg { width: 112px; height: 112px; display: block; }
+        .donut-svg text { font-family: "Segoe UI", "Microsoft JhengHei", sans-serif; fill: #1f3147; text-anchor: middle; font-weight: 900; }
+        .donut-svg .subtext { fill: #66778a; font-size: 10px; font-weight: 800; }
+        .legend { display: grid; gap: 10px; font-size: 13px; }
+        .legend-row { display: grid; grid-template-columns: 12px 1fr auto; gap: 9px; align-items: center; }
+        .dot { width: 12px; height: 12px; border-radius: 50%; }
+        .issue-row { display: grid; grid-template-columns: 90px 1fr 30px; gap: 10px; align-items: center; margin-bottom: 12px; font-size: 12px; font-weight: 800; }
+        .bar { height: 8px; background: #edf2f7; border-radius: 999px; overflow: hidden; }
+        .bar span { display: block; height: 100%; background: #cf3348; border-radius: 999px; }
+        .suggestions { border: 1px solid #e1e9f2; border-radius: 8px; padding: 16px; margin-top: 12px; }
+        .suggestion { border-left: 4px solid #f0ad4e; background: #fffaf0; border-radius: 7px; padding: 11px 12px; margin-bottom: 9px; display: grid; grid-template-columns: 1fr auto; gap: 12px; }
+        .suggestion.high { border-left-color: #cf3348; background: #fff5f7; }
+        .suggestion-title { font-size: 13px; font-weight: 900; margin-bottom: 5px; color: #1f3147; }
+        .suggestion-desc { font-size: 12px; color: #34475f; line-height: 1.55; }
+        .priority { width: 26px; height: 26px; border-radius: 50%; display: inline-grid; place-items: center; color: #fff; background: #cf3348; font-size: 11px; font-weight: 900; }
+        .priority.mid { background: #8895a7; }
+        .footer { border-top: 1px solid #e1e9f2; margin-top: 12px; padding-top: 12px; color: #8a98aa; font-size: 11px; display: flex; justify-content: space-between; gap: 16px; }
+        @media print {
+            @page { size: A4; margin: 0; }
+            body { background: #fff; }
+            .toolbar { display: none; }
+            .page { margin: 0; box-shadow: none; width: 794px; min-height: 1123px; }
+        }
+    </style>
+</head>
+<body>
+<div class="toolbar">
+    <a href="{{ url_for('hospital_profile', hospital_id=profile.hospital.id) }}">返回檔案</a>
+    <button type="button" onclick="window.print()">列印報告</button>
+</div>
+
+<main class="page">
+    <header class="header">
+        <div>
+            <div class="report-label">HOSPITAL SENTIMENT REPORT</div>
+            <h1>{{ profile.hospital.name }}</h1>
+            <div class="meta">
+                醫院地址：{{ profile.hospital.display_address or profile.hospital.address or '地址未提供' }}<br>
+                報告日期：{{ profile.stats.latest_update }}<br>
+                資料期間：{{ profile.stats.period_start }} - {{ profile.stats.period_end }}　|　資料來源：平台已收錄評論分析
+            </div>
+        </div>
+        <div class="score-box">
+            <div class="label">滿意度分數</div>
+            <div class="score">{{ profile.stats.satisfaction_score }}</div>
+            <div class="unit">/ 10 分</div>
+        </div>
+    </header>
+
+    <section class="stats">
+        <div class="stat"><div class="name">總評論數</div><div class="value">{{ profile.stats.total }}</div></div>
+        <div class="stat"><div class="name">正評比例</div><div class="value green">{{ profile.stats.positive_rate }}%</div></div>
+        <div class="stat"><div class="name">負評比例</div><div class="value red">{{ profile.stats.negative_rate }}%</div></div>
+        <div class="stat"><div class="name">負評總數</div><div class="value red">{{ profile.stats.negative }}</div></div>
+    </section>
+
+    <section class="grid">
+        <div class="panel">
+            <div class="panel-title"><i class="fas fa-chart-pie green"></i> 情緒分布</div>
+            <div class="sentiment-box">
+                <svg class="donut-svg" viewBox="0 0 120 120" role="img" aria-label="情緒分布圖">
+                    <circle cx="60" cy="60" r="44" fill="none" stroke="#cf3348" stroke-width="18"></circle>
+                    <circle cx="60" cy="60" r="44" fill="none" stroke="#198754" stroke-width="18"
+                            pathLength="100"
+                            stroke-dasharray="{{ profile.stats.positive_rate }} {{ 100 - profile.stats.positive_rate }}"
+                            stroke-dashoffset="25"
+                            transform="rotate(-90 60 60)"
+                            stroke-linecap="round"></circle>
+                    <circle cx="60" cy="60" r="32" fill="#ffffff"></circle>
+                    <text x="60" y="56" font-size="18">{{ profile.stats.positive_rate }}%</text>
+                    <text x="60" y="72" class="subtext">正評</text>
+                </svg>
+                <div class="legend">
+                    <div class="legend-row"><span class="dot" style="background:#198754;"></span><span>正面評論</span><strong>{{ profile.stats.positive }} 則 / {{ profile.stats.positive_rate }}%</strong></div>
+                    <div class="legend-row"><span class="dot" style="background:#cf3348;"></span><span>負面評論</span><strong>{{ profile.stats.negative }} 則 / {{ profile.stats.negative_rate }}%</strong></div>
+                </div>
+            </div>
+        </div>
+        <div class="panel">
+            <div class="panel-title"><i class="fas fa-triangle-exclamation red"></i> 負評原因與數量</div>
+            {% if profile.issues %}
+                {% set max_issue = profile.issues[0].count %}
+                {% for issue in profile.issues[:5] %}
+                <div class="issue-row">
+                    <span>{{ issue.issue_category }}</span>
+                    <div class="bar"><span style="width: {{ (issue.count / max_issue * 100)|round(0) }}%;"></span></div>
+                    <span class="red">{{ issue.count }}</span>
+                </div>
+                {% endfor %}
+            {% else %}
+                <div style="color:#66778a;font-size:13px;">目前沒有可統計的負評原因。</div>
+            {% endif %}
+        </div>
+    </section>
+
+    <section class="suggestions">
+        <div class="panel-title"><i class="fas fa-lightbulb"></i> 改善建議</div>
+        {% for item in profile.suggestions[:4] %}
+        <div class="suggestion {% if item.priority == '高' %}high{% endif %}">
+            <div>
+                <div class="suggestion-title">{{ item.title }}</div>
+                <div class="suggestion-desc">{{ item.description }}</div>
+            </div>
+            <span class="priority {% if item.priority != '高' %}mid{% endif %}">{{ item.priority or '觀察' }}</span>
+        </div>
+        {% else %}
+        <div class="suggestion">
+            <div>
+                <div class="suggestion-title">持續追蹤評論變化</div>
+                <div class="suggestion-desc">目前資料不足以產生明確改善項目，建議持續累積評論後再評估。</div>
+            </div>
+            <span class="priority mid">觀察</span>
+        </div>
+        {% endfor %}
+    </section>
+
+    <footer class="footer">
+        <span>醫療口碑監測平台</span>
+        <span>本報告依平台評論資料自動彙整，建議搭配院內服務紀錄共同判讀。</span>
+    </footer>
+</main>
+</body>
+</html>

@@ -1,0 +1,775 @@
+<!DOCTYPE html>
+<!--
+==========================================
+🏥 醫院詳細檔案：評論統計、情緒圖表、獎項與收藏功能
+==========================================
+-->
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ profile.hospital.name }} | 醫院詳細檔案</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body { background: #f4f7f6; color: #25364a; font-family: "Segoe UI", "Microsoft JhengHei", sans-serif; }
+        .main-container { max-width: 1220px; margin: 34px auto 56px; padding: 0 20px; }
+        .profile-head, .panel, .stat-card {
+            background: #fff; border: 1px solid #e8edf2; border-radius: 8px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.04);
+        }
+        .profile-head { padding: 24px; margin-bottom: 20px; }
+        .profile-title { font-weight: 800; margin: 0; line-height: 1.25; }
+        .profile-meta { color: #6c757d; margin-top: 8px; }
+        .stat-card { padding: 18px; min-height: 124px; display: flex; justify-content: space-between; align-items: center; }
+        .stat-label { color: #6c757d; font-weight: 700; font-size: 0.88rem; margin-bottom: 8px; }
+        .stat-value { font-size: 1.9rem; font-weight: 800; line-height: 1; }
+        .stat-note { color: #8492a6; font-size: 0.84rem; margin-top: 8px; }
+        .stat-icon {
+            width: 52px; height: 52px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+            font-size: 21px; background: #eef6ff; color: #0066cc; flex-shrink: 0;
+        }
+        .stat-icon.green { background: #eaf8ef; color: #198754; }
+        .stat-icon.red { background: #fff0f1; color: #dc3545; }
+        .stat-icon.orange { background: #fff6e6; color: #f59f00; }
+        .panel { padding: 22px; height: 100%; }
+        .panel-title { font-weight: 800; margin-bottom: 16px; }
+        .chart-box { height: 280px; }
+        .row-item { padding: 12px 0; border-bottom: 1px solid #f1f3f5; }
+        .row-item:last-child { border-bottom: 0; }
+        .mini-bar { height: 8px; background: #f1f3f5; border-radius: 999px; overflow: hidden; }
+        .mini-bar span { display: block; height: 100%; border-radius: 999px; }
+        .issue-grid { display: grid; grid-template-columns: 116px 1fr 54px; gap: 12px; align-items: center; }
+        .filter-row-btn {
+            width: 100%; border: 0; background: transparent; color: inherit; text-align: left;
+            cursor: pointer; transition: color 0.15s ease, background 0.15s ease; border-radius: 8px;
+        }
+        .filter-row-btn:hover { background: #f8fafc; color: #0066cc; }
+        .filter-row-btn.active { background: #eef6ff; color: #0066cc; }
+        .filter-chip { display: inline-flex; align-items: center; gap: 8px; }
+        .keyword-chart-hint { color: #8492a6; font-size: 0.82rem; margin-top: 8px; }
+        .suggestion-card {
+            border: 1px solid #e8edf2; border-radius: 8px; padding: 14px; background: #fff;
+        }
+        .suggestion-card.high { border-color: #f1b0b7; background: #fff8f8; }
+        .review-card {
+            border: 1px solid #e8edf2; border-left: 5px solid #adb5bd; border-radius: 8px;
+            padding: 14px 16px; background: #fff; margin-bottom: 12px;
+        }
+        .review-card.POSITIVE { border-left-color: #198754; }
+        .review-card.NEGATIVE { border-left-color: #dc3545; }
+        .empty-state {
+            border: 1px dashed #d6dee8; border-radius: 8px; padding: 34px 18px;
+            text-align: center; color: #8492a6; background: #fbfcfd;
+        }
+        .award-application-status-scroll {
+            max-height: 260px; overflow-y: auto; padding-right: 4px;
+        }
+        .modal-backdrop { z-index: 6000; }
+        .modal { z-index: 6010; padding-top: 92px; }
+        .modal-dialog { margin-top: 0; margin-bottom: 24px; }
+        .modal-dialog-scrollable { max-height: calc(100vh - 116px); }
+        .modal-dialog-scrollable .modal-content { max-height: calc(100vh - 116px); }
+        .action-bar { display: flex; gap: 10px; flex-wrap: wrap; justify-content: flex-end; }
+        @media (max-width: 768px) {
+            .profile-head .d-flex { display: block !important; }
+            .action-bar { justify-content: flex-start; margin-top: 16px; }
+            .issue-grid { grid-template-columns: 92px 1fr 42px; }
+            .chart-box { height: 240px; }
+        }
+    </style>
+</head>
+<body>
+{% include 'navbar.html' %}
+
+<div class="main-container">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ 'danger' if category == 'analyze_error' else 'success' }} alert-dismissible fade show" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <div class="profile-head">
+        <div class="d-flex justify-content-between gap-3 align-items-start">
+            <div>
+                <div class="text-primary fw-bold mb-2"><i class="fas fa-hospital me-2"></i>醫院詳細檔案</div>
+                <h2 class="profile-title">{{ profile.hospital.name }}</h2>
+                <div class="profile-meta">
+                    <i class="fas fa-location-dot me-1"></i>{{ profile.hospital.display_address or profile.hospital.address or '尚無地址資料' }}
+                    <span class="mx-2">|</span>
+                    <i class="fas fa-clock-rotate-left me-1"></i>最後更新：{{ profile.stats.latest_update }}
+                </div>
+            </div>
+            <div class="action-bar">
+                {% if current_user.role != 'hospital' %}
+                <form action="{{ url_for('toggle_hospital_favorite', hospital_id=profile.hospital.id) }}" method="POST" class="m-0">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    {% if profile.favorite %}
+                        <input type="hidden" name="action" value="remove">
+                        <button type="submit" class="btn btn-warning fw-bold" onclick="return confirm('確定要取消收藏這間醫院嗎？');">
+                            <i class="fas fa-bookmark me-1"></i>已收藏
+                        </button>
+                    {% else %}
+                        <input type="hidden" name="action" value="add">
+                        <button type="submit" class="btn btn-outline-warning fw-bold">
+                            <i class="far fa-bookmark me-1"></i>加入收藏
+                        </button>
+                    {% endif %}
+                </form>
+                {% endif %}
+                <a class="btn btn-outline-success fw-bold" href="{{ url_for('hospital_report', hospital_id=profile.hospital.id) }}">
+                    <i class="fas fa-file-lines me-1"></i>匯出報告
+                </a>
+                <a class="btn btn-outline-primary" href="{{ url_for('google_page', hospital=profile.hospital.name) }}">
+                    <i class="fas fa-rotate me-1"></i>重新分析
+                </a>
+                {% if current_user.is_admin %}
+                <a class="btn btn-success text-white" href="{{ url_for('export_hospital_csv', hospital_id=profile.hospital.id) }}" title="下載此醫院評論資料，可用 Excel 開啟">
+                    <i class="fas fa-file-csv me-1"></i>下載評論資料
+                </a>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    {% if profile.notifications %}
+    <div class="panel mb-4">
+        <h5 class="panel-title"><i class="fas fa-bell me-2 text-danger"></i>院方提醒</h5>
+        {% for notice in profile.notifications %}
+        <div class="row-item">
+            <div class="d-flex justify-content-between gap-3">
+                <div>
+                    <div class="fw-bold text-dark">{{ notice.title }}</div>
+                    <div class="small text-muted mt-1">{{ notice.content }}</div>
+                    {% if current_user.role == 'hospital' and current_user.hospital_id == profile.hospital.id %}
+                    <a class="btn btn-sm btn-outline-primary mt-2" href="{{ url_for('hospital_notifications_page') }}#notice-{{ notice.id }}">
+                        <i class="fas fa-circle-info me-1"></i>查看詳細資訊
+                    </a>
+                    {% endif %}
+                </div>
+                <span class="small text-muted">{{ notice.created_at }}</span>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <div class="row g-3 mb-4">
+        <div class="col-lg-3 col-sm-6">
+            <div class="stat-card">
+                <div>
+                    <div class="stat-label">滿意度分數</div>
+                    <div class="stat-value text-primary">{{ profile.stats.satisfaction_score }}</div>
+                    <div class="stat-note">以正評比例換算 0-10 分</div>
+                </div>
+                <div class="stat-icon"><i class="fas fa-gauge-high"></i></div>
+            </div>
+        </div>
+        <div class="col-lg-3 col-sm-6">
+            <div class="stat-card">
+                <div>
+                    <div class="stat-label">總評論數</div>
+                    <div class="stat-value">{{ profile.stats.total }}</div>
+                    <div class="stat-note">平台已收錄評論</div>
+                </div>
+                <div class="stat-icon orange"><i class="fas fa-comments"></i></div>
+            </div>
+        </div>
+        <div class="col-lg-3 col-sm-6">
+            <div class="stat-card">
+                <div>
+                    <div class="stat-label">正評比例</div>
+                    <div class="stat-value text-success">{{ profile.stats.positive_rate }}%</div>
+                    <div class="stat-note">{{ profile.stats.positive }} 則正面評論</div>
+                </div>
+                <div class="stat-icon green"><i class="fas fa-thumbs-up"></i></div>
+            </div>
+        </div>
+        <div class="col-lg-3 col-sm-6">
+            <div class="stat-card">
+                <div>
+                    <div class="stat-label">負評比例</div>
+                    <div class="stat-value text-danger">{{ profile.stats.negative_rate }}%</div>
+                    <div class="stat-note">{{ profile.stats.negative }} 則負面評論</div>
+                </div>
+                <div class="stat-icon red"><i class="fas fa-triangle-exclamation"></i></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-4 mb-4">
+        <div class="col-lg-5">
+            <div class="panel">
+                <h5 class="panel-title"><i class="fas fa-chart-pie me-2 text-primary"></i>情緒分布</h5>
+                <div class="chart-box"><canvas id="sentimentChart"></canvas></div>
+            </div>
+        </div>
+        <div class="col-lg-7">
+            <div class="panel">
+                <div class="d-flex justify-content-between align-items-center gap-3 flex-wrap mb-3">
+                    <h5 class="panel-title mb-0"><i class="fas fa-chart-line me-2 text-primary"></i>近期評論走勢</h5>
+                    <div class="btn-group btn-group-sm" role="group" aria-label="評論走勢範圍">
+                        <button type="button" class="btn btn-outline-primary trend-range-btn" data-days="7">7 天</button>
+                        <button type="button" class="btn btn-outline-primary trend-range-btn" data-days="30">1 個月</button>
+                        <button type="button" class="btn btn-outline-primary trend-range-btn" data-days="90">3 個月</button>
+                        <button type="button" class="btn btn-primary trend-range-btn active" data-days="all">全部</button>
+                    </div>
+                </div>
+                <div class="chart-box"><canvas id="trendChart"></canvas></div>
+                <div id="trendEmptyState" class="empty-state mt-3 py-3 d-none">此範圍沒有評論資料</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-4 mb-4">
+        <div class="col-lg-4">
+            <div class="panel">
+                <h5 class="panel-title"><i class="fas fa-triangle-exclamation me-2 text-danger"></i>負評原因</h5>
+                {% if profile.issues %}
+                    {% set max_issue = profile.issues[0].count %}
+                    {% for issue in profile.issues %}
+                    <button type="button" class="row-item issue-grid filter-row-btn" data-filter-type="issue" data-filter-value="{{ issue.issue_category }}">
+                        <div class="fw-bold">{{ issue.issue_category }}</div>
+                        <div class="mini-bar">
+                            <span class="bg-danger" style="width: {{ [((issue.count / max_issue) * 100)|round|int, 5]|max }}%"></span>
+                        </div>
+                        <div class="text-end fw-bold text-danger">{{ issue.count }}</div>
+                    </button>
+                    {% endfor %}
+                {% else %}
+                    <div class="empty-state">目前沒有明顯負評分類</div>
+                {% endif %}
+            </div>
+        </div>
+        <div class="col-lg-4">
+            <div class="panel">
+                <h5 class="panel-title"><i class="fas fa-lightbulb me-2 text-warning"></i>改善建議</h5>
+                <div class="d-grid gap-2">
+                    {% for suggestion in profile.suggestions %}
+                    <div class="suggestion-card {% if suggestion.priority == '高' %}high{% endif %}">
+                        <div class="d-flex justify-content-between gap-2 mb-1">
+                            <strong>{{ suggestion.title }}</strong>
+                            <span class="badge {% if suggestion.priority == '高' %}text-bg-danger{% elif suggestion.priority == '中' %}text-bg-warning{% else %}text-bg-secondary{% endif %}">
+                                {{ suggestion.priority }}
+                            </span>
+                        </div>
+                        <div class="small text-muted">{{ suggestion.description }}</div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-4">
+            <div class="panel">
+                <h5 class="panel-title"><i class="fas fa-stethoscope me-2 text-success"></i>科別討論</h5>
+                {% if profile.departments %}
+                    {% set max_dept = profile.departments[0].count %}
+                    {% for dept in profile.departments %}
+                    <button type="button" class="row-item issue-grid filter-row-btn" data-filter-type="department" data-filter-value="{{ dept.department }}">
+                        <div class="fw-bold">{{ dept.department }}</div>
+                        <div class="mini-bar">
+                            <span class="bg-success" style="width: {{ [((dept.count / max_dept) * 100)|round|int, 5]|max }}%"></span>
+                        </div>
+                        <div class="text-end fw-bold text-success">{{ dept.count }}</div>
+                    </button>
+                    {% endfor %}
+                {% else %}
+                    <div class="empty-state">尚無科別討論資料</div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-4 mb-4">
+        <div class="col-lg-6">
+            <div class="panel">
+                <h5 class="panel-title"><i class="fas fa-tags me-2 text-warning"></i>熱門關鍵字</h5>
+                <div class="chart-box"><canvas id="keywordChart"></canvas></div>
+                <div class="keyword-chart-hint">點擊關鍵字橫條可篩選相關評論</div>
+            </div>
+        </div>
+        <div class="col-lg-6">
+            <div class="panel">
+                <h5 class="panel-title"><i class="fas fa-medal me-2 text-warning"></i>得獎與認證紀錄</h5>
+                <div class="mb-3">
+                    {% if profile.awards %}
+                        {% for award in profile.awards %}
+                        <div class="row-item d-flex justify-content-between gap-3">
+                            <div class="fw-bold">{{ award.award_name }}</div>
+                            <span class="badge text-bg-warning">{{ award.department }}</span>
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                        <div class="empty-state">目前尚無已通過的得獎或認證紀錄</div>
+                    {% endif %}
+                </div>
+
+                {% if current_user.role == 'hospital' and current_user.hospital_id == profile.hospital.id %}
+                <div class="border-top pt-3">
+                    <div class="fw-bold mb-2">提出獎項/認證申請</div>
+                    <form action="{{ url_for('submit_award_application', hospital_id=profile.hospital.id) }}" method="POST" enctype="multipart/form-data" class="row g-2">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                        <div class="col-md-4">
+                            <select name="department" class="form-select" required>
+                                <option value="" disabled selected>所屬科別</option>
+                                {% for dept in profile.award_departments %}
+                                <option value="{{ dept }}">{{ dept }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-8">
+                            <input type="text" name="award_name" class="form-control" placeholder="例如：2023 SNQ國家品質標章" required>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label small text-muted mb-1">證明附件（圖片或 PDF）</label>
+                            <input type="file" name="proof_document" class="form-control" accept="image/*,.pdf">
+                        </div>
+                        <div class="col-12">
+                            <button type="submit" class="btn btn-warning fw-bold">
+                                <i class="fas fa-paper-plane me-1"></i>送出審核
+                            </button>
+                        </div>
+                    </form>
+
+                    {% if profile.award_applications %}
+                    <div class="small text-muted mt-3 mb-1">最近申請狀態</div>
+                    <div class="award-application-status-scroll">
+                        {% set status_groups = [
+                            ('pending', '申請中', 'text-bg-warning'),
+                            ('rejected', '已退回', 'text-bg-danger'),
+                            ('approved', '已通過', 'text-bg-success')
+                        ] %}
+                        {% for status_key, status_label, status_badge in status_groups %}
+                        <div class="fw-bold small text-muted mt-2 mb-2">{{ status_label }}</div>
+                        {% set group_state = namespace(has_items=false) %}
+                        {% for item in profile.award_applications %}
+                        {% if item.status == status_key %}
+                        {% set group_state.has_items = true %}
+                        <div class="d-flex justify-content-between gap-2 border rounded px-3 py-2 mb-2 align-items-center">
+                            <div>
+                                <span class="badge text-bg-light me-1">{{ item.department }}</span>
+                                <strong>{{ item.award_name }}</strong>
+                            </div>
+                            <div class="d-flex align-items-center gap-2">
+                                <span class="badge {{ status_badge }}">{{ status_label }}</span>
+                                <button type="button" class="btn btn-sm btn-outline-primary py-1" data-bs-toggle="modal" data-bs-target="#awardApplicationDetailModal{{ item.id }}">
+                                    詳細查看
+                                </button>
+                                {% if item.status == 'rejected' %}
+                                <button type="button" class="btn btn-sm btn-warning text-dark fw-bold py-1" data-bs-toggle="modal" data-bs-target="#resubmitAwardModal{{ item.id }}">
+                                    <i class="fas fa-edit"></i> 修改
+                                </button>
+                                {% endif %}
+                            </div>
+                        </div>
+                        {% endif %}
+                        {% endfor %}
+                        {% if not group_state.has_items %}
+                        <div class="small text-muted border rounded px-3 py-2 mb-2">目前沒有{{ status_label }}的申請</div>
+                        {% endif %}
+                        {% endfor %}
+                    </div>
+
+                    {% for item in profile.award_applications %}
+                    <div class="modal fade" id="awardApplicationDetailModal{{ item.id }}" tabindex="-1" aria-hidden="true">
+                        <div class="modal-dialog modal-lg modal-dialog-scrollable">
+                            <div class="modal-content text-start">
+                                <div class="modal-header">
+                                    <h5 class="modal-title fw-bold">申請詳細內容：{{ item.award_name }}</h5>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                </div>
+                                <div class="modal-body">
+                                    <div class="row g-3 mb-3">
+                                        <div class="col-md-6"><div class="small text-muted">科別</div><div class="fw-bold">{{ item.department }}</div></div>
+                                        <div class="col-md-6"><div class="small text-muted">狀態</div><div class="fw-bold">{% if item.status == 'approved' %}已通過{% elif item.status == 'rejected' %}已退回{% else %}待審核{% endif %}</div></div>
+                                        <div class="col-md-6"><div class="small text-muted">送出時間</div><div>{{ item.created_at }}</div></div>
+                                        <div class="col-md-6"><div class="small text-muted">審核時間</div><div>{{ item.reviewed_at or '尚未審核' }}</div></div>
+                                        <div class="col-12">
+                                            <div class="small text-muted">佐證資料</div>
+                                            {% if item.proof_document %}
+                                            <a href="{{ url_for('static', filename='uploads/proofs/' ~ item.proof_document) }}" target="_blank" class="btn btn-sm btn-info text-white mt-1 fw-bold">
+                                                <i class="fas fa-image me-1"></i>查看佐證資料
+                                            </a>
+                                            {% else %}
+                                            <div class="text-muted">未上傳佐證資料</div>
+                                            {% endif %}
+                                        </div>
+                                        {% if item.admin_note %}
+                                        <div class="col-12">
+                                            <div class="alert alert-danger mb-0">
+                                                <strong>退回原因 / 審核備註：</strong>{{ item.admin_note }}
+                                            </div>
+                                        </div>
+                                        {% endif %}
+                                    </div>
+                                    <div class="fw-bold mb-2">審核歷程</div>
+                                    {% for history in item.history %}
+                                    <div class="border rounded p-2 mb-2">
+                                        <span class="badge {% if history.action == 'approved' %}text-bg-success{% elif history.action == 'rejected' %}text-bg-danger{% else %}text-bg-secondary{% endif %}">
+                                            {% if history.action == 'approved' %}審核通過{% elif history.action == 'rejected' %}退回申請{% else %}送出申請{% endif %}
+                                        </span>
+                                        <span class="small text-muted ms-2">{{ history.created_at }} · {{ history.actor_username or '系統' }}</span>
+                                        {% if history.note %}<div class="small mt-1">{{ history.note }}</div>{% endif %}
+                                        {% if history.proof_document %}
+                                        <a href="{{ url_for('static', filename='uploads/proofs/' ~ history.proof_document) }}" target="_blank" class="small d-inline-block mt-1">查看當次佐證資料</a>
+                                        {% endif %}
+                                    </div>
+                                    {% else %}
+                                    <div class="text-muted small">尚無審核歷程</div>
+                                    {% endfor %}
+                                </div>
+                                <div class="modal-footer">
+                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">關閉</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {% if item.status == 'rejected' %}
+                    <div class="modal fade" id="resubmitAwardModal{{ item.id }}" tabindex="-1" aria-hidden="true">
+                        <div class="modal-dialog">
+                            <div class="modal-content text-start">
+                                <div class="modal-header bg-warning">
+                                    <h5 class="modal-title fw-bold text-dark"><i class="fas fa-redo-alt me-2"></i>修正並重新送出申請</h5>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                </div>
+                                <form action="{{ url_for('resubmit_award_application', app_id=item.id) }}" method="POST" enctype="multipart/form-data">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                                    <div class="modal-body">
+                                        <div class="alert alert-danger mb-3">
+                                            <strong><i class="fas fa-comment-dots me-1"></i>管理員 退回備註：</strong><br>
+                                            {{ item.admin_note or '未填寫明確原因' }}
+                                        </div>
+                                        <div class="mb-3">
+                                            <label class="form-label fw-bold">修正所屬科別</label>
+                                            <select name="department" class="form-select" required>
+                                                {% for dept in profile.award_departments %}
+                                                <option value="{{ dept }}" {% if dept == item.department %}selected{% endif %}>{{ dept }}</option>
+                                                {% endfor %}
+                                            </select>
+                                        </div>
+                                        <div class="mb-3">
+                                            <label class="form-label fw-bold">修正項目名稱</label>
+                                            <input type="text" name="award_name" class="form-control" value="{{ item.award_name }}" required>
+                                        </div>
+                                        <div class="mb-3">
+                                            <label class="form-label fw-bold">補上或更換證明附件</label>
+                                            <input type="file" name="proof_document" class="form-control" accept="image/*,.pdf">
+                                            {% if item.proof_document %}
+                                            <div class="small text-muted mt-1">目前已有附件，沒有重新選檔會保留原附件。</div>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                    <div class="modal-footer">
+                                        <button type="submit" class="btn btn-outline-danger fw-bold me-auto"
+                                                formaction="{{ url_for('delete_award_application', app_id=item.id) }}"
+                                                formmethod="POST"
+                                                formnovalidate
+                                                onclick="return confirm('確定要刪除這筆退回申請嗎？刪除後如果還需要申請，必須重新送出。');">
+                                            <i class="fas fa-trash-alt me-1"></i>刪除申請
+                                        </button>
+                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                                        <button type="submit" class="btn btn-warning fw-bold text-dark"><i class="fas fa-share-square me-1"></i>重新送出審核</button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    {% endfor %}
+                    </div>
+                    {% endif %}
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+    <div class="panel">
+        <div class="d-flex justify-content-between align-items-center gap-3 flex-wrap mb-3">
+            <h5 class="panel-title mb-0"><i class="fas fa-list-ul me-2 text-primary"></i>評論明細</h5>
+            <div class="d-flex align-items-center gap-2 flex-wrap">
+                <div class="input-group input-group-sm" style="width: min(320px, 80vw);">
+                    <span class="input-group-text bg-white"><i class="fas fa-search text-muted"></i></span>
+                    <input type="search" id="profileReviewSearch" class="form-control" placeholder="搜尋評論內容、科別或負評原因">
+                </div>
+                <div id="activeFilterBox" class="d-none">
+                    <span class="badge text-bg-primary filter-chip">
+                        <span id="activeFilterText"></span>
+                        <button type="button" class="btn-close btn-close-white btn-sm" aria-label="清除篩選" onclick="clearReviewFilter()"></button>
+                    </span>
+                </div>
+            </div>
+        </div>
+        {% if profile.reviews %}
+            {% for review in profile.reviews %}
+            <div class="review-card {{ review.sentiment }}" data-review-card data-content="{{ review.content|e }}" data-department="{{ review.department|e }}" data-issue="{{ review.issue_category|e }}">
+                <div class="d-flex justify-content-between gap-3 mb-2">
+                    <div>
+                        <span class="badge {% if review.sentiment == 'POSITIVE' %}text-bg-success{% else %}text-bg-danger{% endif %}">
+                            {% if review.sentiment == 'POSITIVE' %}正面{% else %}負面{% endif %}
+                        </span>
+                        <span class="badge text-bg-light ms-1">{{ review.department }}</span>
+                        {% if review.sentiment == 'NEGATIVE' %}
+                        <span class="badge bg-danger-subtle text-danger border border-danger-subtle ms-1">{{ review.issue_category }}</span>
+                        {% endif %}
+                    </div>
+                    <div class="small text-muted">{{ review.time }}</div>
+                </div>
+                <div>{{ review.content }}</div>
+            </div>
+            {% endfor %}
+            <div id="reviewEmptyFilterState" class="empty-state d-none">沒有符合目前篩選條件的評論</div>
+        {% else %}
+            <div class="empty-state">這間醫院目前還沒有評論資料，請先執行分析。</div>
+        {% endif %}
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+    // ==========================================
+    // 🏥 醫院檔案互動：圖表繪製、評論篩選、收藏與通知操作
+    // ==========================================
+    const stats = {{ profile.stats | tojson }};
+    const trend = {{ profile.trend | tojson }};
+    const keywords = {{ profile.keywords | tojson }};
+    let activeReviewFilter = null;
+
+    function setReviewFilter(type, value) {
+        activeReviewFilter = { type, value };
+        const filterLabels = {
+            issue: '負評原因',
+            department: '科別',
+            keyword: '關鍵字'
+        };
+        document.getElementById('activeFilterText').textContent = `${filterLabels[type] || '篩選'}：${value}`;
+        document.getElementById('activeFilterBox').classList.remove('d-none');
+
+        document.querySelectorAll('.filter-row-btn').forEach(button => {
+            button.classList.toggle('active', button.dataset.filterType === type && button.dataset.filterValue === value);
+        });
+
+        applyReviewFilter();
+        document.querySelector('[data-review-card]')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    function clearReviewFilter() {
+        activeReviewFilter = null;
+        document.getElementById('activeFilterBox').classList.add('d-none');
+        document.querySelectorAll('.filter-row-btn').forEach(button => button.classList.remove('active'));
+        applyReviewFilter();
+    }
+
+    function applyReviewFilter() {
+        const cards = Array.from(document.querySelectorAll('[data-review-card]'));
+        const keyword = String(document.getElementById('profileReviewSearch')?.value || '').trim().toLowerCase();
+        let visibleCount = 0;
+
+        cards.forEach(card => {
+            let isVisible = true;
+            const content = String(card.dataset.content || '').toLowerCase();
+            const department = String(card.dataset.department || '').toLowerCase();
+            const issue = String(card.dataset.issue || '').toLowerCase();
+
+            if (keyword) {
+                isVisible = content.includes(keyword) || department.includes(keyword) || issue.includes(keyword);
+            }
+
+            if (activeReviewFilter) {
+                const value = String(activeReviewFilter.value || '').toLowerCase();
+
+                if (activeReviewFilter.type === 'issue') {
+                    isVisible = isVisible && issue === value;
+                } else if (activeReviewFilter.type === 'department') {
+                    isVisible = isVisible && department === value;
+                } else if (activeReviewFilter.type === 'keyword') {
+                    isVisible = isVisible && (content.includes(value) || department.includes(value) || issue.includes(value));
+                }
+            }
+
+            card.classList.toggle('d-none', !isVisible);
+            if (isVisible) visibleCount += 1;
+        });
+
+        document.getElementById('reviewEmptyFilterState')?.classList.toggle('d-none', visibleCount > 0);
+    }
+
+    document.querySelectorAll('.filter-row-btn').forEach(button => {
+        button.addEventListener('click', () => setReviewFilter(button.dataset.filterType, button.dataset.filterValue));
+    });
+    document.getElementById('profileReviewSearch')?.addEventListener('input', applyReviewFilter);
+
+    const sentimentCenterText = {
+        id: 'sentimentCenterText',
+        afterDraw(chart) {
+            const { ctx, chartArea } = chart;
+            if (!chartArea) return;
+            const centerX = (chartArea.left + chartArea.right) / 2;
+            const centerY = (chartArea.top + chartArea.bottom) / 2;
+            ctx.save();
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillStyle = '#1f3147';
+            ctx.font = '800 18px "Microsoft JhengHei", sans-serif';
+            ctx.fillText(`${stats.positive_rate}%`, centerX, centerY - 8);
+            ctx.fillStyle = '#6c7c8f';
+            ctx.font = '700 12px "Microsoft JhengHei", sans-serif';
+            ctx.fillText(`負評 ${stats.negative_rate}%`, centerX, centerY + 12);
+            ctx.restore();
+        }
+    };
+
+    new Chart(document.getElementById('sentimentChart'), {
+        type: 'doughnut',
+        data: {
+            labels: ['正面評論', '負面評論'],
+            datasets: [{
+                data: [stats.positive, stats.negative],
+                backgroundColor: ['#198754', '#dc3545'],
+                borderWidth: 0
+            }]
+        },
+        options: {
+            maintainAspectRatio: false,
+            plugins: { legend: { position: 'bottom' } }
+        },
+        plugins: [sentimentCenterText]
+    });
+
+    function parseTrendDate(label) {
+        const match = String(label || '').match(/^(\d{4})[/-](\d{1,2})[/-](\d{1,2})/);
+        if (!match) return null;
+        const [, year, month, day] = match;
+        return new Date(Number(year), Number(month) - 1, Number(day));
+    }
+
+    const trendPoints = [...trend].sort((a, b) => {
+        const dateA = parseTrendDate(a.label);
+        const dateB = parseTrendDate(b.label);
+        return (dateA ? dateA.getTime() : Number.MAX_SAFE_INTEGER) - (dateB ? dateB.getTime() : Number.MAX_SAFE_INTEGER);
+    });
+    let trendChartInstance = null;
+
+    function getTrendPointsByRange(days) {
+        if (days === 'all') return trendPoints;
+
+        const cutoff = new Date();
+        cutoff.setHours(0, 0, 0, 0);
+        cutoff.setDate(cutoff.getDate() - Number(days) + 1);
+
+        return trendPoints.filter(item => {
+            const itemDate = parseTrendDate(item.label);
+            return itemDate && itemDate >= cutoff;
+        });
+    }
+
+    function renderTrendChart(days = '7') {
+        const visibleTrendPoints = getTrendPointsByRange(days);
+        const emptyState = document.getElementById('trendEmptyState');
+        emptyState.classList.toggle('d-none', visibleTrendPoints.length > 0);
+
+        if (trendChartInstance) trendChartInstance.destroy();
+
+        trendChartInstance = new Chart(document.getElementById('trendChart'), {
+            type: 'line',
+            data: {
+                labels: visibleTrendPoints.map(item => item.label),
+                datasets: [{
+                    label: '日期平均滿意度',
+                    data: visibleTrendPoints.map(item => item.score),
+                    borderColor: '#0066cc',
+                    backgroundColor: 'rgba(0, 102, 204, 0.1)',
+                    pointBackgroundColor: visibleTrendPoints.map(item => item.score >= 5 ? '#198754' : '#dc3545'),
+                    pointBorderColor: '#0066cc',
+                    pointBorderWidth: 2,
+                    pointRadius: 6,
+                    pointHoverRadius: 8,
+                    borderWidth: 2,
+                    fill: true,
+                    tension: 0.25,
+                    clip: false
+                }]
+            },
+            options: {
+                maintainAspectRatio: false,
+                layout: { padding: { top: 14, bottom: 14, left: 6, right: 12 } },
+                scales: {
+                    y: {
+                        min: -0.5,
+                        max: 10.5,
+                        title: { display: true, text: '滿意度 (0-10)' },
+                        ticks: {
+                            stepSize: 1,
+                            callback: value => (value >= 0 && value <= 10 ? value : '')
+                        }
+                    },
+                    x: {
+                        ticks: { maxRotation: 45, minRotation: 45 }
+                    }
+                },
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            afterLabel: context => {
+                                const item = visibleTrendPoints[context.dataIndex];
+                                return `共 ${item.count || 1} 則評論的平均`;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    document.querySelectorAll('.trend-range-btn').forEach(button => {
+        button.addEventListener('click', () => {
+            document.querySelectorAll('.trend-range-btn').forEach(item => {
+                item.classList.remove('active', 'btn-primary');
+                item.classList.add('btn-outline-primary');
+            });
+            button.classList.add('active', 'btn-primary');
+            button.classList.remove('btn-outline-primary');
+            renderTrendChart(button.dataset.days);
+        });
+    });
+    renderTrendChart('all');
+
+    const keywordChart = new Chart(document.getElementById('keywordChart'), {
+        type: 'bar',
+        data: {
+            labels: keywords.labels || [],
+            datasets: [{
+                label: '出現次數',
+                data: keywords.data || [],
+                backgroundColor: 'rgba(245, 159, 0, 0.65)',
+                borderColor: '#f59f00',
+                borderWidth: 1,
+                borderRadius: 5
+            }]
+        },
+        options: {
+            indexAxis: 'y',
+            maintainAspectRatio: false,
+            scales: { x: { beginAtZero: true, grid: { display: false } }, y: { grid: { display: false } } },
+            plugins: { legend: { display: false } },
+            onClick: (event, elements) => {
+                if (!elements.length) return;
+                const keyword = keywordChart.data.labels[elements[0].index];
+                if (keyword) setReviewFilter('keyword', keyword);
+            },
+            onHover: (event, elements) => {
+                event.native.target.style.cursor = elements.length ? 'pointer' : 'default';
+            }
+        }
+    });
+</script>
+</body>
+</html>

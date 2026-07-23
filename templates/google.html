@@ -1,0 +1,1124 @@
+<!DOCTYPE html>
+<!--
+==========================================
+🔎 醫院查詢與評論分析：搜尋醫院、執行爬蟲、呈現情緒分析圖表
+==========================================
+-->
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <title>醫院查詢 | 醫療口碑監測平台</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels"></script>
+
+  <style>
+    body { background-color: #f4f7f6; font-family: "Segoe UI", "Microsoft JhengHei", sans-serif; }
+    .main-container { max-width: 1000px; margin: 40px auto; padding: 0 20px; }
+    .card-box {
+      background: white; border-radius: 12px; padding: 25px;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.05); margin-bottom: 30px;
+    }
+    .search-input { border-radius: 50px 0 0 50px; padding-left: 20px; border: 1px solid #ced4da; }
+    .search-btn { border-radius: 0 50px 50px 0; background-color: #0066cc; border: 1px solid #0066cc; color: white; padding: 0 25px; }
+    .search-btn:hover { background-color: #0052a3; color: white; }
+    .review-card {
+      background: white; border-radius: 8px; padding: 20px; margin-bottom: 15px;
+      border-left: 5px solid #ccc; box-shadow: 0 2px 8px rgba(0,0,0,0.03); transition: transform 0.2s;
+    }
+    .review-card:hover { transform: translateX(5px); }
+    .review-card.POSITIVE { border-left-color: #28a745; }
+    .review-card.NEGATIVE { border-left-color: #dc3545; }
+    .confidence-badge { font-size: 0.8rem; padding: 2px 8px; border-radius: 4px; color: white; }
+    .bg-pos { background-color: #28a745; }
+    .bg-neg { background-color: #dc3545; }
+    .trend-container { height: 300px; width: 100%; }
+    .issue-chip {
+      display: inline-flex; align-items: center; gap: 6px;
+      border: 1px solid #f1b0b7; color: #b02a37; background: #fff5f6;
+      border-radius: 999px; padding: 6px 12px; margin: 0 8px 8px 0;
+      font-size: 0.9rem; cursor: pointer; transition: all 0.2s ease;
+    }
+    .issue-chip:hover, .issue-chip.active { background: #dc3545; color: #fff; border-color: #dc3545; }
+    .issue-badge { background: #fff0f1; color: #b02a37; border: 1px solid #f1b0b7; }
+    .filter-panel {
+      background: #fff; border: 1px solid #e9ecef; border-radius: 8px;
+      padding: 14px; margin-bottom: 18px;
+    }
+    .result-actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+    .favorite-status { flex-basis: 100%; color: #6c757d; font-size: 0.86rem; min-height: 1.2em; }
+    .hospital-search-wrap { position: relative; }
+    .hospital-suggestion-panel {
+      position: absolute;
+      left: 0;
+      right: 0;
+      top: calc(100% + 8px);
+      z-index: 1050;
+      background: #fff;
+      border: 1px solid #dbe4ee;
+      border-radius: 14px;
+      box-shadow: 0 16px 40px rgba(15, 23, 42, 0.16);
+      padding: 8px;
+      max-height: 320px;
+      overflow-y: auto;
+      display: none;
+      text-align: left;
+    }
+    .hospital-suggestion-panel.show { display: block; }
+    .hospital-suggestion-item {
+      width: 100%;
+      border: 0;
+      background: transparent;
+      border-radius: 10px;
+      padding: 12px 14px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      color: #212529;
+      font-weight: 700;
+      text-align: left;
+      transition: background-color 0.15s ease, color 0.15s ease, transform 0.15s ease;
+    }
+    .hospital-suggestion-item i { color: #0066cc; width: 18px; text-align: center; }
+    .hospital-suggestion-item:hover,
+    .hospital-suggestion-item.active {
+      background: #eef6ff;
+      color: #0052a3;
+      transform: translateX(2px);
+    }
+    .hospital-suggestion-empty {
+      padding: 14px;
+      color: #6c757d;
+      font-weight: 600;
+    }
+    .nearby-panel {
+      border-top: 1px solid #e9ecef;
+      margin-top: 22px;
+      padding-top: 20px;
+      text-align: left;
+    }
+    .nearby-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    .nearby-list {
+      display: grid;
+      gap: 12px;
+      margin-top: 16px;
+    }
+    .nearby-item {
+      border: 1px solid #e4ebf3;
+      border-radius: 8px;
+      padding: 14px 16px;
+      background: #fbfdff;
+    }
+    .nearby-distance {
+      color: #0f766e;
+      font-weight: 800;
+      white-space: nowrap;
+    }
+    .nearby-actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-top: 10px;
+    }
+    @media (max-width: 767px) {
+      .hospital-suggestion-panel {
+        top: calc(100% + 6px);
+        border-radius: 12px;
+        max-height: 260px;
+      }
+      .hospital-suggestion-item {
+        padding: 11px 12px;
+        font-size: 0.95rem;
+      }
+      .nearby-header {
+        align-items: stretch;
+      }
+      .nearby-header .btn {
+        width: 100%;
+      }
+    }
+  </style>
+</head>
+<body>
+  {% include 'navbar.html' %}
+
+  <div class="main-container">
+    <div class="card-box text-center">
+      <h3 class="mb-4" style="color: #0066cc; font-weight: 700;">
+        <i class="fas fa-search-location me-2"></i>醫院查詢與評論分析
+      </h3>
+
+      <form id="ajaxSearchForm" class="row justify-content-center">
+        <input type="hidden" id="csrf_token" value="{{ csrf_token() }}"/>
+        <div class="col-md-8 hospital-search-wrap">
+          <div class="input-group input-group-lg">
+            <span class="input-group-text bg-white border-end-0"><i class="fas fa-hospital text-muted"></i></span>
+            
+            <input type="text" name="hospital" id="hospitalInput" class="form-control border-start-0 ps-0" 
+                   placeholder="請輸入或選擇醫院名稱（例如：台大）" 
+                   autocomplete="off" required>
+
+            <button type="submit" class="btn search-btn">查詢分析</button>
+          </div>
+          <div id="hospitalSuggestions" class="hospital-suggestion-panel" role="listbox" aria-label="醫院建議清單"></div>
+        </div>
+      </form>
+
+      <div class="nearby-panel">
+        <div class="nearby-header">
+          <div>
+            <h5 class="fw-bold mb-1"><i class="fas fa-location-crosshairs me-2 text-success"></i>附近醫院推薦</h5>
+          </div>
+          <button type="button" id="nearbyHospitalButton" class="btn btn-success fw-bold">
+            <i class="fas fa-location-arrow me-1"></i>使用目前位置推薦附近醫院
+          </button>
+        </div>
+        <div id="nearbyHospitalStatus" class="small text-muted mt-3"></div>
+        <div id="nearbyHospitalResults" class="nearby-list"></div>
+      </div>
+    </div>
+
+    <div id="resultsContainer" style="display: none;">
+      
+      <div class="card-box animate__animated animate__fadeIn">
+        <div class="row align-items-center">
+          <div class="col-md-5">
+            <h4 class="mb-3 fw-bold" id="displayHospitalName">醫院名稱</h4>
+
+            <div class="mb-3 text-muted small">
+              <i class="fas fa-history me-1"></i> 
+              資料分析時間：<span id="displayStoredAt" class="fw-bold">--</span>
+              <span class="ms-2 text-primary text-nowrap">(每 7 天自動更新)</span>
+            </div>
+
+            <div class="d-flex gap-3 mb-4">
+              <div class="text-success border border-success rounded px-3 py-2 bg-light">
+                <i class="fas fa-smile me-1"></i> 正面：<strong id="displayPos">0</strong> 則
+              </div>
+              <div class="text-danger border border-danger rounded px-3 py-2 bg-light">
+                <i class="fas fa-frown me-1"></i> 負面：<strong id="displayNeg">0</strong> 則
+              </div>
+            </div>
+            <p class="text-muted small">
+              <i class="fas fa-info-circle me-1"></i> 
+              分析結果基於已收錄的 <strong id="displayTotal">0</strong> 則評論。
+            </p>
+            <div class="result-actions">
+            {% if current_user.role != 'hospital' %}
+              <button type="button" id="favoriteButton" class="btn btn-outline-warning btn-sm fw-bold d-none">
+                <i class="far fa-bookmark me-1"></i><span id="favoriteButtonText">加入收藏</span>
+              </button>
+            {% endif %}
+            {% if current_user.is_admin %}
+              <a href="#" id="profileLink" class="btn btn-outline-primary btn-sm d-none">
+                <i class="fas fa-hospital me-1"></i>查看醫院詳細檔案
+              </a>
+            {% endif %}
+              <div id="favoriteStatus" class="favorite-status"></div>
+            </div>
+          </div>
+          <div class="col-md-7 text-center">
+            <div style="max-width: 280px; margin: 0 auto;">
+              <canvas id="sentimentChart"></canvas>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card-box animate__animated animate__fadeInUp">
+        <h5 class="mb-4 fw-bold text-dark"><i class="fas fa-chart-line me-2 text-primary"></i>近期評論情緒趨勢 (0-10分)</h5>
+        <p class="text-muted small mb-3">
+            已將相同時間點的評論合併計算平均分。
+            <span class="text-success fw-bold">10分</span> 代表極度滿意，
+            <span class="text-danger fw-bold">0分</span> 代表極度不滿。
+        </p>
+        <div class="trend-container">
+            <canvas id="trendChart"></canvas>
+        </div>
+      </div>
+
+      <div class="card-box animate__animated animate__fadeInUp">
+        <h5 class="mb-4 fw-bold text-dark"><i class="fas fa-tags me-2 text-warning"></i>大家都在討論什麼？ (Top 10 關鍵字)</h5>
+        <div class="trend-container">
+            <canvas id="keywordChart"></canvas>
+        </div>
+      </div>
+
+      <div class="card-box animate__animated animate__fadeInUp" id="issueBox">
+        <h5 class="mb-3 fw-bold text-dark"><i class="fas fa-triangle-exclamation me-2 text-danger"></i>負評原因分類</h5>
+        <p class="text-muted small mb-3">系統會把負面評論歸納成常見問題，點選下方分類可直接篩選評論。</p>
+        <div id="issueChips" class="mb-3"></div>
+        <div class="trend-container">
+            <canvas id="issueChart"></canvas>
+        </div>
+      </div>
+
+      <div class="card-box">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h5 class="fw-bold text-dark mb-0">
+                <i class="fas fa-robot me-2 text-primary"></i>AI 診斷報告 (Gemini)
+            </h5>
+            <button id="btn-gen-summary" class="btn btn-primary btn-sm shadow-sm" onclick="fetchSummary()">
+                <i class="fas fa-magic me-1"></i> 生成懶人包
+            </button>
+        </div>
+        
+        <div id="ai-loading" class="text-center py-4" style="display: none;">
+            <div class="spinner-grow text-primary" role="status"></div>
+            <p class="mt-2 text-muted">AI 正在閱讀評論並撰寫報告，請稍候...</p>
+        </div>
+
+        <div id="ai-result" class="p-4 bg-light rounded border" style="display: none; line-height: 1.8;">
+        </div>
+      </div>
+
+      <h5 class="mb-3 text-muted"><i class="fas fa-list-ul me-2"></i>評論詳細內容</h5>
+      
+      <div class="filter-panel">
+        <div class="row g-2 align-items-end">
+          <div class="col-md-3">
+            <label class="form-label small text-muted mb-1">情緒</label>
+            <select id="sentimentFilter" class="form-select form-select-sm">
+              <option value="ALL">全部評論</option>
+              <option value="POSITIVE">只看正面</option>
+              <option value="NEGATIVE">只看負面</option>
+            </select>
+          </div>
+          <div class="col-md-3">
+            <label class="form-label small text-muted mb-1">負評原因</label>
+            <select id="issueFilter" class="form-select form-select-sm">
+              <option value="ALL">全部原因</option>
+            </select>
+          </div>
+          <div class="col-md-4">
+            <label class="form-label small text-muted mb-1">關鍵字</label>
+            <div class="input-group input-group-sm">
+              <span class="input-group-text bg-white border-end-0">
+                <i class="fas fa-filter text-muted"></i>
+              </span>
+              <input type="text" id="reviewSearch" class="form-control border-start-0 ps-0" 
+                     placeholder="搜尋評論內容、科別或原因...">
+            </div>
+          </div>
+          <div class="col-md-2 d-grid">
+            <button type="button" class="btn btn-outline-secondary btn-sm" id="clearFilters">
+              <i class="fas fa-rotate-left me-1"></i>重置
+            </button>
+          </div>
+        </div>
+        <div class="small text-muted mt-2">目前顯示 <strong id="visibleReviewCount">0</strong> 則評論</div>
+      </div>
+
+      <div class="review-list" id="reviewsContainer">
+        </div>
+      
+    </div> </div>
+  
+  <div id="loadingOverlay" class="d-none">
+    <div class="loading-content text-center">
+        <div class="spinner-border text-light mb-4" style="width: 4rem; height: 4rem;" role="status"><span class="visually-hidden">Loading...</span></div>
+        <h3 class="text-white fw-bold mb-3">正在分析中，請稍候...</h3>
+        <p id="loadingText" class="text-white-50 fs-5">正在啟動爬蟲...</p>
+        <div class="progress mt-3" style="height: 6px; width: 300px; margin: 0 auto;"><div class="progress-bar progress-bar-striped progress-bar-animated bg-info" role="progressbar" style="width: 100%"></div></div>
+    </div>
+  </div>
+
+  <style>
+    #loadingOverlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.85); z-index: 9999; display: flex; justify-content: center; align-items: center; backdrop-filter: blur(5px); transition: opacity 0.3s ease; }
+    .loading-content { animation: fadeInUp 0.5s ease; }
+    @keyframes fadeInUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+  </style>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+  <script>
+    // ==========================================
+    // 🔎 醫院查詢互動：送出分析、更新圖表、篩選評論與收藏醫院
+    // ==========================================
+    // 全域變數用來存放圖表實例，以便更新時銷毀舊圖
+    let pieChartInstance = null;
+    let trendChartInstance = null;
+    let keywordChartInstance = null;
+    let issueChartInstance = null;
+    let currentHospitalName = "";
+    let currentHospitalId = null;
+    let currentIsFavorite = false;
+    let currentSentiments = [];
+
+    // 1. Loading 動畫邏輯
+    const loadingMessages = ["🚀 正在啟動 Google Maps...", "🔍 正在搜尋目標醫院...", "🤖 AI 正在閱讀並分析情緒...", "📊 正在生成數據報表...", "💾 寫入資料庫中..."];
+    let loadingInterval;
+
+    function showLoading() {
+        document.getElementById('loadingOverlay').classList.remove('d-none');
+        let step = 0; 
+        const text = document.getElementById('loadingText'); 
+        text.innerText = loadingMessages[0];
+        loadingInterval = setInterval(() => { 
+            step = (step + 1) % loadingMessages.length; 
+            text.innerText = loadingMessages[step]; 
+        }, 2000);
+    }
+
+    function hideLoading() {
+        document.getElementById('loadingOverlay').classList.add('d-none');
+        clearInterval(loadingInterval);
+    }
+
+    // 🛑 改變 3：核心 AJAX 表單送出邏輯
+    document.getElementById('ajaxSearchForm').addEventListener('submit', async function(e) {
+      e.preventDefault(); // 阻止換頁
+      
+      const hospitalInput = document.getElementById('hospitalInput').value;
+      if (!hospitalInput) return;
+
+      showLoading();
+      
+      // 隱藏舊結果，重置 AI 報告
+      document.getElementById('resultsContainer').style.display = 'none';
+      document.getElementById('ai-result').style.display = 'none';
+
+      try {
+        const formData = new FormData();
+        formData.append('hospital', hospitalInput);
+
+        // 👇 1. 把畫面上隱藏的通行證抓出來
+        const csrfToken = document.getElementById('csrf_token').value;
+        formData.append('csrf_token', csrfToken);
+
+        // 👇 2. 發送請求時，在 headers 裡面掛上通行證！
+        const response = await fetch('/analyze', {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': csrfToken
+            },
+            body: formData
+        });
+
+        // 👇 3. 新增詳細的錯誤攔截，不要只顯示「連線異常」
+        if (!response.ok) {
+            if (response.status === 429) throw new Error("您搜尋得太頻繁囉，請等一分鐘後再試！");
+            if (response.status === 400) throw new Error("安全驗證失效 (400)，請重新登入或重新整理網頁！");
+            throw new Error(`伺服器發生錯誤 (代碼: ${response.status})`);
+        }
+
+        const data = await response.json();
+
+          if (data.status === 'success') {
+              hideLoading();
+              
+              // 🌟 關鍵修復：把後端回傳的乾淨醫院名稱（已經把臺改成台了），存進變數裡給 AI 用！
+              currentHospitalName = data.hospital; 
+              currentHospitalId = data.hospital_id || null;
+              
+              renderResults(data); // 呼叫渲染畫面的函數
+          } else {
+              hideLoading();
+              alert('錯誤：' + data.message);
+          }
+        } catch (error) {
+          hideLoading();
+          // 👇 把原本寫死的字，改成顯示我們自訂的錯誤訊息
+          alert(error.message || '連線異常，請稍後再試！');
+          console.error("AJAX 錯誤:", error);
+      }
+  });
+
+    // 渲染資料到畫面上
+    function renderResults(data) {
+        // 顯示外層容器
+        document.getElementById('resultsContainer').style.display = 'block';
+
+        // 更新文字數據
+        document.getElementById('displayHospitalName').innerText = data.hospital;
+
+        document.getElementById('displayStoredAt').innerText = data.stored_at;
+
+        document.getElementById('displayPos').innerText = data.pos;
+        document.getElementById('displayNeg').innerText = data.neg;
+        document.getElementById('displayTotal').innerText = data.pos + data.neg;
+        currentHospitalId = data.hospital_id || null;
+        currentIsFavorite = Boolean(data.is_favorite);
+        const profileLink = document.getElementById('profileLink');
+        if (profileLink && data.hospital_id) {
+            profileLink.href = `/hospital/${data.hospital_id}`;
+            profileLink.classList.remove('d-none');
+        } else if (profileLink) {
+            profileLink.classList.add('d-none');
+        }
+        updateFavoriteButton();
+
+        // 繪製三個圖表
+        drawPieChart(data.pos, data.neg);
+        drawTrendChart(data.sentiments, data.regional_avg);
+        drawKeywordChart(data.keywords);
+        drawIssueBreakdown(data.issues);
+        populateIssueFilter(data.issues);
+
+        // 生成評論卡片
+        renderReviewCards(data.sentiments);
+        applyReviewFilters();
+    }
+
+    function updateFavoriteButton() {
+        const favoriteButton = document.getElementById('favoriteButton');
+        const favoriteButtonText = document.getElementById('favoriteButtonText');
+        const favoriteStatus = document.getElementById('favoriteStatus');
+        if (!favoriteButton || !favoriteButtonText) return;
+
+        favoriteButton.classList.toggle('d-none', !currentHospitalId);
+        favoriteButton.classList.toggle('btn-warning', currentIsFavorite);
+        favoriteButton.classList.toggle('btn-outline-warning', !currentIsFavorite);
+        favoriteButtonText.innerText = currentIsFavorite ? '已收藏' : '加入收藏';
+        favoriteButton.querySelector('i').className = `${currentIsFavorite ? 'fas' : 'far'} fa-bookmark me-1`;
+        favoriteButton.title = currentIsFavorite ? '取消收藏這間醫院' : '收藏這間醫院';
+        if (favoriteStatus) favoriteStatus.innerText = '';
+    }
+
+    async function toggleFavoriteHospital() {
+        if (!currentHospitalId) return;
+
+        const favoriteButton = document.getElementById('favoriteButton');
+        const favoriteStatus = document.getElementById('favoriteStatus');
+        const csrfToken = document.getElementById('csrf_token') ? document.getElementById('csrf_token').value : '';
+        favoriteButton.disabled = true;
+        if (favoriteStatus) favoriteStatus.innerText = '正在更新收藏狀態...';
+
+        try {
+            const response = await fetch(`/api/hospital/${currentHospitalId}/favorite`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrfToken
+                },
+                body: JSON.stringify({ action: currentIsFavorite ? 'remove' : 'add' })
+            });
+            const payload = await response.json().catch(() => ({}));
+            if (!response.ok || payload.status !== 'ok') {
+                throw new Error(payload.message || `收藏更新失敗 (代碼: ${response.status})`);
+            }
+
+            currentIsFavorite = Boolean(payload.is_favorite);
+            updateFavoriteButton();
+            if (favoriteStatus) favoriteStatus.innerText = payload.message || (currentIsFavorite ? '已加入收藏。' : '已取消收藏。');
+        } catch (error) {
+            if (favoriteStatus) favoriteStatus.innerText = error.message || '收藏更新失敗，請稍後再試。';
+        } finally {
+            favoriteButton.disabled = false;
+        }
+    }
+
+    function renderNearbyHospitals(hospitals) {
+        const resultBox = document.getElementById('nearbyHospitalResults');
+        if (!resultBox) return;
+
+        resultBox.innerHTML = '';
+        hospitals.forEach(hospital => {
+            const mapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(`${hospital.latitude},${hospital.longitude}`)}&travelmode=driving`;
+            const analyzeUrl = `/google?hospital=${encodeURIComponent(hospital.name)}`;
+            const item = document.createElement('div');
+            item.className = 'nearby-item';
+            item.innerHTML = `
+                <div class="d-flex justify-content-between gap-3 flex-wrap">
+                    <div>
+                        <div class="fw-bold text-dark">${escapeHTML(hospital.name)}</div>
+                        <div class="text-muted small mt-1"><i class="fas fa-map-marker-alt me-1"></i>${escapeHTML(hospital.address || '地址待補')}</div>
+                    </div>
+                    <div class="nearby-distance">${Number(hospital.distance_km).toFixed(2)} 公里</div>
+                </div>
+                <div class="nearby-actions">
+                    <a class="btn btn-outline-primary btn-sm" href="${analyzeUrl}">
+                        <i class="fas fa-chart-pie me-1"></i>查看醫院分析
+                    </a>
+                    <a class="btn btn-outline-success btn-sm" href="${mapsUrl}" target="_blank" rel="noopener">
+                        <i class="fas fa-route me-1"></i>Google Maps 導航
+                    </a>
+                </div>
+            `;
+            resultBox.appendChild(item);
+        });
+    }
+
+    async function fetchNearbyHospitals(position) {
+        const statusBox = document.getElementById('nearbyHospitalStatus');
+        const resultBox = document.getElementById('nearbyHospitalResults');
+        const lat = position.coords.latitude;
+        const lng = position.coords.longitude;
+
+        statusBox.innerText = '正在依照距離排序附近醫院...';
+        resultBox.innerHTML = '';
+
+        try {
+            const response = await fetch(`/api/nearby_hospitals?lat=${encodeURIComponent(lat)}&lng=${encodeURIComponent(lng)}`);
+            const payload = await response.json().catch(() => ({}));
+            if (!response.ok || payload.status === 'error') {
+                throw new Error(payload.message || `附近醫院查詢失敗 (代碼: ${response.status})`);
+            }
+            if (!payload.hospitals || payload.hospitals.length === 0) {
+                statusBox.innerText = payload.message || '目前沒有可排序的醫院定位資料';
+                return;
+            }
+
+            statusBox.innerText = `已找到距離最近的 ${payload.hospitals.length} 間醫院。`;
+            renderNearbyHospitals(payload.hospitals);
+        } catch (error) {
+            statusBox.innerText = error.message || '附近醫院推薦暫時無法使用，請稍後再試。';
+        }
+    }
+
+    function requestNearbyHospitals() {
+        const button = document.getElementById('nearbyHospitalButton');
+        const statusBox = document.getElementById('nearbyHospitalStatus');
+        const resultBox = document.getElementById('nearbyHospitalResults');
+        if (!navigator.geolocation) {
+            statusBox.innerText = '此瀏覽器不支援定位功能。';
+            return;
+        }
+
+        button.disabled = true;
+        statusBox.innerText = '正在取得目前位置...';
+        resultBox.innerHTML = '';
+        navigator.geolocation.getCurrentPosition(
+            async position => {
+                await fetchNearbyHospitals(position);
+                button.disabled = false;
+            },
+            () => {
+                statusBox.innerText = '無法取得定位，請確認瀏覽器定位權限';
+                button.disabled = false;
+            },
+            { enableHighAccuracy: true, timeout: 10000, maximumAge: 300000 }
+        );
+    }
+
+    // --- 圖表繪製函式 ---
+    function drawPieChart(pos, neg) {
+        const ctx = document.getElementById('sentimentChart').getContext('2d');
+        if(pieChartInstance) pieChartInstance.destroy(); // 銷毀舊圖
+        const total = pos + neg;
+        pieChartInstance = new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: ['正面評論', '負面評論'],
+                datasets: [{ data: [pos, neg], backgroundColor: ['#28a745', '#dc3545'], borderWidth: 0 }]
+            },
+            options: {
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { position: 'right' },
+                    datalabels: { color: '#fff', font: { weight: 'bold' }, formatter: (v) => total === 0 ? "" : Math.round(v/total*100) + "%" }
+                }
+            },
+            plugins: [ChartDataLabels]
+        });
+    }
+
+    // 👇 1. 這裡要加上第二個參數 regionalAvg
+    function drawTrendChart(sentiments, regionalAvg) {
+      let groupedData = {}; 
+      let uniqueTimeLabels = [];
+
+      sentiments.forEach(r => {
+          let cleanTime = r.time.replace(/(\(.*\))|(\s*上次編輯：)/g, '').trim();
+          let score = (r.label === 'POSITIVE') ? r.score : (100 - r.score);
+
+          if (!groupedData[cleanTime]) {
+              groupedData[cleanTime] = { total: 0, count: 0 };
+              uniqueTimeLabels.push(cleanTime);
+          }
+          groupedData[cleanTime].total += score;
+          groupedData[cleanTime].count += 1;
+      });
+
+      function parseTimeToSortValue(timeStr) {
+          const dateMatch = String(timeStr || '').match(/^(\d{4})[/-](\d{1,2})[/-](\d{1,2})/);
+          if (dateMatch) {
+              const [, year, month, day] = dateMatch;
+              return new Date(Number(year), Number(month) - 1, Number(day)).getTime();
+          }
+
+          let num = parseFloat(timeStr.replace(/[^\d.]/g, '')) || 1; 
+          if (timeStr.includes("分鐘")) return Date.now() - num * 60 * 1000;
+          if (timeStr.includes("小時")) return Date.now() - num * 60 * 60 * 1000;
+          if (timeStr.includes("天")) return Date.now() - num * 24 * 60 * 60 * 1000;
+          if (timeStr.includes("週") || timeStr.includes("星期") || timeStr.includes("禮拜")) return Date.now() - num * 7 * 24 * 60 * 60 * 1000;
+          if (timeStr.includes("月")) return Date.now() - num * 30 * 24 * 60 * 60 * 1000;
+          if (timeStr.includes("年")) return Date.now() - num * 365 * 24 * 60 * 60 * 1000;
+          if (timeStr.includes("昨天")) return Date.now() - 24 * 60 * 60 * 1000;
+          return Date.now(); 
+      }
+
+      let sortableData = uniqueTimeLabels.map(time => {
+          let data = groupedData[time];
+          let avg100 = data.total / data.count;
+          return {
+              label: time,
+              score: parseFloat((avg100 / 10).toFixed(1)),
+              reviewCount: data.count,
+              sortValue: parseTimeToSortValue(time)
+          };
+      });
+
+      sortableData.sort((a, b) => a.sortValue - b.sortValue);
+
+      // 👇 2. 製造一個用來畫基準線的陣列 (長度跟時間標籤一樣長，數值都是平均分)
+      const labelsArray = sortableData.map(item => item.label);
+      // 如果後端沒有傳地區平均分(例如該地區只有這家醫院)，預設給 5.0 分
+      const safeRegionalAvg = regionalAvg || 5.0; 
+      const regionalAvgData = labelsArray.map(() => safeRegionalAvg);
+
+      const ctx = document.getElementById('trendChart').getContext('2d');
+      if(trendChartInstance) trendChartInstance.destroy();
+      
+      trendChartInstance = new Chart(ctx, {
+          type: 'line',
+          data: {
+              labels: labelsArray,
+              datasets: [
+                  {
+                      label: '時段平均滿意度',
+                      data: sortableData.map(item => item.score),
+                      borderColor: '#0066cc', 
+                      backgroundColor: 'rgba(0, 102, 204, 0.1)',
+                      borderWidth: 2, 
+                      pointBackgroundColor: sortableData.map(item => item.score >= 5.0 ? '#28a745' : '#dc3545'),
+                      pointRadius: 6, pointHoverRadius: 8, fill: true, tension: 0.3, clip: false
+                  },
+                  // 👇 3. 新增這組 Dataset，用來畫出同地區的基準線
+                  {
+                      label: '該地區醫院平均水準',
+                      data: regionalAvgData,
+                      borderColor: '#dc3545', // 紅色基準線
+                      borderDash: [5, 5],     // 讓它變成虛線
+                      borderWidth: 2,
+                      fill: false,            // 基準線不要填滿下方顏色
+                      pointRadius: 0,         // 隱藏線上的點
+                      pointHoverRadius: 0
+                  }
+              ]
+          },
+          options: {
+              maintainAspectRatio: false, responsive: true,
+              layout: { padding: { top: 20, bottom: 20, left: 10, right: 10 } },
+              scales: { 
+                  y: { min: 0, max: 10, grid: { color: '#f0f0f0' }, title: { display: true, text: '滿意度 (0-10)' } }, 
+                  x: { grid: { display: false } } 
+              },
+              // 把圖例打開，讓使用者知道紅色虛線代表什麼
+              plugins: {
+                  legend: { display: true },
+                  tooltip: {
+                      callbacks: {
+                          afterLabel: function(context) {
+                              if (context.datasetIndex !== 0) return null;
+                              const item = sortableData[context.dataIndex];
+                              return `共 ${item.reviewCount} 則評論的平均`;
+                          }
+                      }
+                  }
+              }
+          }
+      });
+  }
+
+    function drawKeywordChart(keywords) {
+        const ctx = document.getElementById('keywordChart').getContext('2d');
+        if(keywordChartInstance) keywordChartInstance.destroy();
+
+        if (!keywords || keywords.labels.length === 0) return;
+
+        keywordChartInstance = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: keywords.labels,
+                datasets: [{
+                    label: '出現次數', data: keywords.data,
+                    backgroundColor: 'rgba(255, 159, 64, 0.6)', borderColor: 'rgba(255, 159, 64, 1)',
+                    borderWidth: 1, borderRadius: 5, barPercentage: 0.7 
+                }]
+            },
+            options: {
+                maintainAspectRatio: false, responsive: true, indexAxis: 'y', 
+                layout: { padding: { right: 50, left: 0, top: 0, bottom: 0 } },
+                onHover: (event, chartElement) => { event.native.target.style.cursor = chartElement.length ? 'pointer' : 'default'; },
+                onClick: (event, elements, chart) => {
+                    if (elements.length > 0) {
+                        const clickedLabel = chart.data.labels[elements[0].index];
+                        const searchInput = document.getElementById('reviewSearch');
+                        searchInput.value = clickedLabel;
+                        searchInput.dispatchEvent(new Event('input'));
+                        searchInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    }
+                },
+                scales: { x: { beginAtZero: true, grid: { display: false }, grace: '5%' }, y: { grid: { display: false } } },
+                plugins: { legend: { display: false }, datalabels: { anchor: 'end', align: 'end', color: '#666', font: { weight: 'bold' }, clip: false } }
+            },
+            plugins: [ChartDataLabels]
+        });
+    }
+
+    function drawIssueBreakdown(issues) {
+        const box = document.getElementById('issueBox');
+        const chips = document.getElementById('issueChips');
+        const ctx = document.getElementById('issueChart').getContext('2d');
+        if(issueChartInstance) issueChartInstance.destroy();
+        chips.innerHTML = '';
+
+        if (!issues || !issues.labels || issues.labels.length === 0) {
+            box.style.display = 'none';
+            return;
+        }
+
+        box.style.display = 'block';
+        issues.labels.forEach((label, index) => {
+            const chip = document.createElement('button');
+            chip.type = 'button';
+            chip.className = 'issue-chip';
+            chip.dataset.issue = label;
+            chip.innerHTML = `<i class="fas fa-tag"></i>${escapeHTML(label)} <strong>${issues.data[index]}</strong>`;
+            chip.addEventListener('click', () => {
+                document.getElementById('sentimentFilter').value = 'NEGATIVE';
+                document.getElementById('issueFilter').value = label;
+                applyReviewFilters();
+                document.getElementById('reviewsContainer').scrollIntoView({ behavior: 'smooth', block: 'start' });
+            });
+            chips.appendChild(chip);
+        });
+
+        issueChartInstance = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: issues.labels,
+                datasets: [{
+                    label: '負評數',
+                    data: issues.data,
+                    backgroundColor: 'rgba(220, 53, 69, 0.65)',
+                    borderColor: 'rgba(220, 53, 69, 1)',
+                    borderWidth: 1,
+                    borderRadius: 5,
+                    barPercentage: 0.7
+                }]
+            },
+            options: {
+                maintainAspectRatio: false,
+                responsive: true,
+                indexAxis: 'y',
+                onClick: (event, elements, chart) => {
+                    if (elements.length > 0) {
+                        const clickedLabel = chart.data.labels[elements[0].index];
+                        document.getElementById('sentimentFilter').value = 'NEGATIVE';
+                        document.getElementById('issueFilter').value = clickedLabel;
+                        applyReviewFilters();
+                        document.getElementById('reviewsContainer').scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    }
+                },
+                scales: { x: { beginAtZero: true, grid: { display: false }, grace: '10%' }, y: { grid: { display: false } } },
+                plugins: { legend: { display: false }, datalabels: { anchor: 'end', align: 'end', color: '#666', font: { weight: 'bold' }, clip: false } }
+            },
+            plugins: [ChartDataLabels]
+        });
+    }
+
+    function populateIssueFilter(issues) {
+        const issueFilter = document.getElementById('issueFilter');
+        issueFilter.innerHTML = '<option value="ALL">全部原因</option>';
+
+        if (!issues || !issues.labels) return;
+        issues.labels.forEach(label => {
+            const option = document.createElement('option');
+            option.value = label;
+            option.textContent = label;
+            issueFilter.appendChild(option);
+        });
+    }
+
+    function reviewTimeSortValue(time) {
+        const text = String(time || '')
+            .replace(/上次編輯：|上次編輯:/g, '')
+            .trim();
+
+        const dateMatch = text.match(/^(\d{4})[/-](\d{1,2})[/-](\d{1,2})/);
+        if (dateMatch) {
+            const [, year, month, day] = dateMatch;
+            return new Date(Number(year), Number(month) - 1, Number(day)).getTime();
+        }
+
+        const num = parseFloat(text.replace(/[^\d.]/g, '')) || 1;
+        if (text.includes('剛剛') || text.includes('今天')) return Date.now();
+        if (text.includes('分鐘')) return Date.now() - num * 60 * 1000;
+        if (text.includes('小時')) return Date.now() - num * 60 * 60 * 1000;
+        if (text.includes('昨天')) return Date.now() - 24 * 60 * 60 * 1000;
+        if (text.includes('天')) return Date.now() - num * 24 * 60 * 60 * 1000;
+        if (text.includes('週') || text.includes('星期') || text.includes('禮拜')) return Date.now() - num * 7 * 24 * 60 * 60 * 1000;
+        if (text.includes('月')) return Date.now() - num * 30 * 24 * 60 * 60 * 1000;
+        if (text.includes('年')) return Date.now() - num * 365 * 24 * 60 * 60 * 1000;
+        return 0;
+    }
+
+    function renderReviewCards(sentiments) {
+        const container = document.getElementById('reviewsContainer');
+        container.innerHTML = ''; // 清空舊評論
+        currentSentiments = [...(sentiments || [])].sort((a, b) => {
+            const timeDiff = reviewTimeSortValue(b.time) - reviewTimeSortValue(a.time);
+            if (timeDiff !== 0) return timeDiff;
+            return (b.stored_at || '').localeCompare(a.stored_at || '');
+        });
+        
+        currentSentiments.forEach(r => {
+            const isPos = r.label === 'POSITIVE';
+            const badgeClass = isPos ? 'bg-pos' : 'bg-neg';
+            const labelText = isPos ? '正面' : '負面';
+            const cleanTime = (r.time || 'Unknown').replace(/上次編輯：|上次編輯:/g, "").trim();
+            const issue = r.issue_category || '其他問題';
+            const issueBadge = !isPos ? `<span class="badge rounded-pill issue-badge ms-2">${escapeHTML(issue)}</span>` : '';
+            const department = r.department || '綜合/未提及';
+
+            const cardHTML = `
+                <div class="review-card ${r.label}" data-sentiment="${r.label}" data-issue="${escapeHTML(issue)}" data-department="${escapeHTML(department)}">
+                    <div class="review-meta d-flex justify-content-between mb-2">
+                        <div>
+                            <span class="confidence-badge ${badgeClass}">${labelText}</span>
+                            <span class="ms-2 text-muted small">信心分數：${r.score}%</span>
+                            ${issueBadge}
+                            <span class="badge rounded-pill text-bg-light ms-2">${escapeHTML(department)}</span>
+                        </div>
+                        <div class="text-muted small"><i class="far fa-clock me-1"></i>${cleanTime}</div>
+                    </div>
+                    <div class="review-content text-dark">${escapeHTML(r.text)}</div>
+                </div>
+            `;
+            container.insertAdjacentHTML('beforeend', cardHTML);
+        });
+    }
+
+    // --- 輔助功能邏輯 ---
+
+    function applyReviewFilters() {
+        const keyword = document.getElementById('reviewSearch').value.toLowerCase().trim();
+        const sentiment = document.getElementById('sentimentFilter').value;
+        const issue = document.getElementById('issueFilter').value;
+        let visibleCount = 0;
+
+        document.querySelectorAll('.review-card').forEach(card => {
+            const content = card.querySelector('.review-content').innerText.toLowerCase();
+            const department = (card.dataset.department || '').toLowerCase();
+            const issueText = (card.dataset.issue || '').toLowerCase();
+            const matchesKeyword = !keyword || content.includes(keyword) || department.includes(keyword) || issueText.includes(keyword);
+            const matchesSentiment = sentiment === 'ALL' || card.dataset.sentiment === sentiment;
+            const matchesIssue = issue === 'ALL' || card.dataset.issue === issue;
+            const shouldShow = matchesKeyword && matchesSentiment && matchesIssue;
+
+            card.style.display = shouldShow ? "" : "none";
+            if (shouldShow) visibleCount += 1;
+        });
+
+        document.getElementById('visibleReviewCount').innerText = visibleCount;
+        document.querySelectorAll('.issue-chip').forEach(chip => {
+            chip.classList.toggle('active', issue !== 'ALL' && chip.dataset.issue === issue);
+        });
+    }
+
+    document.getElementById('reviewSearch')?.addEventListener('input', applyReviewFilters);
+    document.getElementById('sentimentFilter')?.addEventListener('change', applyReviewFilters);
+    document.getElementById('issueFilter')?.addEventListener('change', function() {
+        if (this.value !== 'ALL') document.getElementById('sentimentFilter').value = 'NEGATIVE';
+        applyReviewFilters();
+    });
+    document.getElementById('clearFilters')?.addEventListener('click', function() {
+        document.getElementById('reviewSearch').value = '';
+        document.getElementById('sentimentFilter').value = 'ALL';
+        document.getElementById('issueFilter').value = 'ALL';
+        applyReviewFilters();
+    });
+
+    // AI 懶人包
+    function cleanAIHtmlOutput(html) {
+      return String(html || '')
+        .trim()
+        .replace(/^```(?:html)?\s*/i, '')
+        .replace(/\s*```$/g, '')
+        .trim();
+    }
+
+    function fetchSummary() {
+      if (!currentHospitalName) { alert("請先搜尋醫院"); return; }
+
+      const btn = document.getElementById('btn-gen-summary');
+      const loading = document.getElementById('ai-loading');
+      const result = document.getElementById('ai-result');
+      
+      // 👇 1. 把畫面上隱藏的通行證抓出來
+      const csrfToken = document.getElementById('csrf_token') ? document.getElementById('csrf_token').value : '';
+
+      btn.disabled = true;
+      btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 分析中...';
+      loading.style.display = 'block';
+      result.style.display = 'none';
+
+      fetch('/api/generate_summary', {
+          method: 'POST',
+          headers: { 
+              'Content-Type': 'application/json',
+              'X-CSRFToken': csrfToken  // 👇 2. 把通行證掛在標頭送出！
+          },
+          body: JSON.stringify({ hospital_name: currentHospitalName })
+      })
+      .then(async res => {
+          // 👇 3. 攔截錯誤，不要只顯示「連線錯誤」
+          if (!res.ok) {
+              if (res.status === 429) throw new Error("AI 產生太頻繁囉，請等一分鐘後再試！");
+              if (res.status === 400) throw new Error("安全驗證失效 (400)，請重新整理網頁再試一次！");
+              throw new Error(`伺服器發生錯誤 (代碼: ${res.status})`);
+          }
+          return res.json();
+      })
+      .then(data => {
+          loading.style.display = 'none';
+          btn.disabled = false;
+          btn.innerHTML = '<i class="fas fa-sync-alt"></i> 重新生成';
+          
+          if (data.summary) {
+              result.innerHTML = cleanAIHtmlOutput(data.summary); 
+              result.style.display = 'block';
+          } else {
+              alert("生成失敗：" + (data.error || "未知錯誤"));
+          }
+      })
+      .catch(err => {
+          console.error(err);
+          loading.style.display = 'none';
+          btn.disabled = false;
+          // 👇 4. 顯示真實的錯誤訊息
+          alert(err.message || "連線錯誤，請稍後再試！");
+      });
+    }
+
+    // 下拉選單與自動搜尋邏輯
+    document.addEventListener('DOMContentLoaded', function() {
+      const hInput = document.getElementById('hospitalInput');
+      const suggestionPanel = document.getElementById('hospitalSuggestions');
+      const allHospitals = {{ all_hospitals | default([]) | tojson | safe }};
+      let activeSuggestionIndex = -1;
+      document.getElementById('favoriteButton')?.addEventListener('click', toggleFavoriteHospital);
+      document.getElementById('nearbyHospitalButton')?.addEventListener('click', requestNearbyHospitals);
+      
+      function hideHospitalSuggestions() {
+          if (!suggestionPanel) return;
+          suggestionPanel.classList.remove('show');
+          suggestionPanel.innerHTML = '';
+          activeSuggestionIndex = -1;
+      }
+
+      function chooseHospitalSuggestion(name) {
+          hInput.value = name;
+          hideHospitalSuggestions();
+          hInput.focus();
+      }
+
+      function renderHospitalSuggestions() {
+          if (!hInput || !suggestionPanel) return;
+          const val = hInput.value.trim().toLowerCase();
+          suggestionPanel.innerHTML = '';
+          activeSuggestionIndex = -1;
+
+          if (!val) {
+              hideHospitalSuggestions();
+              return;
+          }
+
+          const matches = allHospitals
+              .filter(h => String(h).toLowerCase().includes(val))
+              .slice(0, 20);
+
+          if (!matches.length) {
+              suggestionPanel.innerHTML = '<div class="hospital-suggestion-empty">沒有找到符合的醫院</div>';
+              suggestionPanel.classList.add('show');
+              return;
+          }
+
+          matches.forEach((name, index) => {
+              const button = document.createElement('button');
+              button.type = 'button';
+              button.className = 'hospital-suggestion-item';
+              button.setAttribute('role', 'option');
+              button.dataset.index = index;
+              button.innerHTML = `<i class="fas fa-hospital"></i><span>${escapeHTML(name)}</span>`;
+              button.addEventListener('mousedown', (event) => {
+                  event.preventDefault();
+                  chooseHospitalSuggestion(name);
+              });
+              suggestionPanel.appendChild(button);
+          });
+          suggestionPanel.classList.add('show');
+      }
+
+      function updateActiveSuggestion(items) {
+          items.forEach((item, index) => item.classList.toggle('active', index === activeSuggestionIndex));
+          if (activeSuggestionIndex >= 0 && items[activeSuggestionIndex]) {
+              items[activeSuggestionIndex].scrollIntoView({ block: 'nearest' });
+          }
+      }
+
+      if (hInput && suggestionPanel) {
+          hInput.addEventListener('input', renderHospitalSuggestions);
+          hInput.addEventListener('focus', renderHospitalSuggestions);
+          hInput.addEventListener('blur', () => setTimeout(hideHospitalSuggestions, 120));
+          hInput.addEventListener('keydown', function(event) {
+              const items = Array.from(suggestionPanel.querySelectorAll('.hospital-suggestion-item'));
+              if (!suggestionPanel.classList.contains('show') || !items.length) return;
+
+              if (event.key === 'ArrowDown') {
+                  event.preventDefault();
+                  activeSuggestionIndex = (activeSuggestionIndex + 1) % items.length;
+                  updateActiveSuggestion(items);
+              } else if (event.key === 'ArrowUp') {
+                  event.preventDefault();
+                  activeSuggestionIndex = (activeSuggestionIndex - 1 + items.length) % items.length;
+                  updateActiveSuggestion(items);
+              } else if (event.key === 'Enter' && activeSuggestionIndex >= 0) {
+                  event.preventDefault();
+                  items[activeSuggestionIndex].dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
+              } else if (event.key === 'Escape') {
+                  hideHospitalSuggestions();
+              }
+          });
+      }
+
+      // 🌟 新增：檢查網址有沒有從「地區分類」帶醫院名稱過來？
+      const urlParams = new URLSearchParams(window.location.search);
+      const hospitalParam = urlParams.get('hospital');
+      
+      if (hospitalParam) {
+          // 1. 把醫院名稱填進輸入框
+          document.getElementById('hospitalInput').value = hospitalParam;
+          // 2. 移除網址上的參數，讓畫面看起來乾淨
+          window.history.replaceState({}, document.title, "/google");
+          // 3. 模擬按下了「開始分析」按鈕！
+          document.getElementById('ajaxSearchForm').dispatchEvent(new Event('submit'));
+      }
+  });
+
+  function escapeHTML(str) {
+    if (!str) return '';
+    return str.replace(/[&<>'"]/g, 
+        tag => ({
+            '&': '&amp;',
+            '<': '&lt;',
+            '>': '&gt;',
+            "'": '&#39;',
+            '"': '&quot;'
+        }[tag] || tag)
+    );
+  }
+
+  </script>
+</body>
+</html>

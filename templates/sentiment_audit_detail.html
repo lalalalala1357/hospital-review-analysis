@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>情緒分析人工抽驗 | 醫療口碑監測平台</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        body { background: #f4f7f6; color: #25364a; font-family: "Segoe UI", "Microsoft JhengHei", sans-serif; }
+        .main-container { max-width: 1180px; margin: 28px auto; padding: 0 20px 44px; }
+        .page-head, .review-row, .result-panel, .metric-card { background: #fff; border: 1px solid #e4ebf3; border-radius: 8px; box-shadow: 0 4px 14px rgba(30,55,90,.04); }
+        .page-head { padding: 20px 22px; margin-bottom: 16px; }
+        .review-list { display: grid; gap: 12px; }
+        .review-row { padding: 16px; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 18px; align-items: start; }
+        .review-meta { color: #6c7a89; font-size: .88rem; display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 8px; }
+        .review-content { white-space: pre-wrap; line-height: 1.7; }
+        .sentiment-options { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; min-width: 230px; }
+        .sentiment-options .btn { font-weight: 800; border-radius: 8px; }
+        .result-pill { border-radius: 999px; padding: 5px 10px; font-weight: 900; font-size: .78rem; display: inline-flex; align-items: center; gap: 5px; }
+        .pill-positive { background: #eaf8ef; color: #157347; }
+        .pill-negative { background: #fff0f1; color: #bb2d3b; }
+        .pill-correct { background: #eaf8ef; color: #157347; }
+        .pill-wrong { background: #fff0f1; color: #bb2d3b; }
+        .metric-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-bottom: 16px; }
+        .metric-card { padding: 15px; }
+        .metric-label { color: #6c7a89; font-weight: 800; font-size: .82rem; margin-bottom: 6px; }
+        .metric-value { font-size: 1.45rem; font-weight: 900; line-height: 1; }
+        .result-panel { padding: 18px; margin-bottom: 16px; }
+        .plain-summary { display: grid; gap: 10px; margin-bottom: 16px; }
+        .plain-summary-item {
+            display: flex; align-items: center; gap: 12px; padding: 14px 16px;
+            border: 1px solid #e4ebf3; border-radius: 8px; background: #fff;
+            box-shadow: 0 4px 14px rgba(30,55,90,.04);
+        }
+        .plain-summary-icon {
+            width: 38px; height: 38px; border-radius: 8px; display: inline-flex;
+            align-items: center; justify-content: center; flex-shrink: 0;
+        }
+        .plain-summary-icon.good { background: #eaf8ef; color: #157347; }
+        .plain-summary-icon.bad { background: #fff0f1; color: #bb2d3b; }
+        .plain-summary-title { font-weight: 900; color: #25364a; }
+        .plain-summary-note { color: #6c7a89; font-size: .92rem; margin-top: 2px; }
+        .advanced-summary { margin-bottom: 16px; }
+        .advanced-summary summary {
+            cursor: pointer; font-weight: 900; color: #0066cc; padding: 14px 16px;
+            background: #fff; border: 1px solid #d8e7f7; border-radius: 8px;
+        }
+        .advanced-summary[open] summary { margin-bottom: 12px; }
+        .matrix-table th, .matrix-table td { text-align: center; vertical-align: middle; }
+        .sticky-submit { position: sticky; bottom: 0; background: rgba(244,247,246,.96); padding: 14px 0 0; margin-top: 14px; }
+        @media (max-width: 900px) {
+            .review-row { grid-template-columns: 1fr; }
+            .sentiment-options { min-width: 0; }
+            .metric-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        }
+        @media (max-width: 560px) {
+            .metric-grid { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+{% include 'navbar.html' %}
+
+<div class="main-container">
+    <div class="page-head d-flex justify-content-between align-items-start gap-3 flex-wrap">
+        <div>
+            <h2 class="fw-bold mb-1"><i class="fas fa-clipboard-check me-2 text-primary"></i>{{ batch.batch_name or ('情緒分析人工抽驗 #' ~ batch.id) }}</h2>
+            <div class="text-muted">
+                建立時間 {{ batch.created_at or '--' }}，
+                狀態 {% if batch.status == 'completed' %}已完成{% else %}待標記{% endif %}，
+                樣本數 {{ items|length }}
+            </div>
+        </div>
+        <a href="{{ url_for('sentiment_audit_list') }}" class="btn btn-outline-secondary fw-bold">
+            <i class="fas fa-arrow-left me-1"></i>返回列表
+        </a>
+    </div>
+
+    <div id="auditAlert" class="alert d-none" role="alert"></div>
+    <input type="hidden" id="csrfToken" value="{{ csrf_token() }}">
+
+    {% if batch.status == 'completed' and metrics %}
+    <div class="metric-grid">
+        <div class="metric-card"><div class="metric-label">抽驗總數</div><div class="metric-value">{{ metrics.total }}</div></div>
+        <div class="metric-card"><div class="metric-label">正確筆數</div><div class="metric-value text-success">{{ metrics.correct }}</div></div>
+        <div class="metric-card"><div class="metric-label">錯誤筆數</div><div class="metric-value text-danger">{{ metrics.incorrect }}</div></div>
+        <div class="metric-card"><div class="metric-label">整體正確率</div><div class="metric-value">{{ "%.1f"|format(metrics.accuracy * 100) }}%</div></div>
+    </div>
+
+    <div class="plain-summary">
+        <div class="plain-summary-item">
+            <div class="plain-summary-icon good"><i class="fas fa-check"></i></div>
+            <div>
+                <div class="plain-summary-title">模型這次判對 {{ metrics.correct }} 筆，判錯 {{ metrics.incorrect }} 筆。</div>
+                <div class="plain-summary-note">整體來看，每 10 筆大約有 {{ "%.1f"|format(metrics.accuracy * 10) }} 筆判斷正確。</div>
+            </div>
+        </div>
+        <div class="plain-summary-item">
+            <div class="plain-summary-icon bad"><i class="fas fa-arrow-down"></i></div>
+            <div>
+                <div class="plain-summary-title">{{ metrics.fn }} 筆其實是正面，但模型判成負面。</div>
+                <div class="plain-summary-note">這代表模型可能把部分好評看得太悲觀。</div>
+            </div>
+        </div>
+        <div class="plain-summary-item">
+            <div class="plain-summary-icon bad"><i class="fas fa-arrow-up"></i></div>
+            <div>
+                <div class="plain-summary-title">{{ metrics.fp }} 筆其實是負面，但模型判成正面。</div>
+                <div class="plain-summary-note">這代表模型可能漏掉部分需要注意的負評。</div>
+            </div>
+        </div>
+    </div>
+
+    <details class="advanced-summary">
+        <summary><i class="fas fa-chart-simple me-2"></i>查看進階統計</summary>
+        <div class="metric-grid">
+            <div class="metric-card"><div class="metric-label">人工正面數</div><div class="metric-value">{{ metrics.manual_positive }}</div></div>
+            <div class="metric-card"><div class="metric-label">人工負面數</div><div class="metric-value">{{ metrics.manual_negative }}</div></div>
+            <div class="metric-card"><div class="metric-label">模型正面數</div><div class="metric-value">{{ metrics.model_positive }}</div></div>
+            <div class="metric-card"><div class="metric-label">模型負面數</div><div class="metric-value">{{ metrics.model_negative }}</div></div>
+        </div>
+
+        <div class="result-panel">
+            <h5 class="fw-bold mb-3">分類指標</h5>
+            <div class="text-muted mb-3">
+                精準率代表模型標成該類別時有多少是真的；召回率代表人工標成該類別的評論中，模型抓回多少；F1 分數是兩者的綜合表現。
+            </div>
+            <div class="table-responsive">
+                <table class="table table-bordered align-middle mb-0">
+                    <thead class="table-light">
+                        <tr><th>類別</th><th>精準率</th><th>召回率</th><th>F1 分數</th></tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <th>正面</th>
+                            <td>{{ "%.3f"|format(metrics.positive_precision) }}</td>
+                            <td>{{ "%.3f"|format(metrics.positive_recall) }}</td>
+                            <td>{{ "%.3f"|format(metrics.positive_f1) }}</td>
+                        </tr>
+                        <tr>
+                            <th>負面</th>
+                            <td>{{ "%.3f"|format(metrics.negative_precision) }}</td>
+                            <td>{{ "%.3f"|format(metrics.negative_recall) }}</td>
+                            <td>{{ "%.3f"|format(metrics.negative_f1) }}</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="result-panel">
+            <h5 class="fw-bold mb-3">判斷對照表</h5>
+            <div class="text-muted mb-3">列是人工標準答案，欄是模型預測結果。綠色代表判斷正確，紅色代表判斷錯誤。</div>
+            <div class="table-responsive">
+                <table class="table table-bordered matrix-table mb-0">
+                    <thead class="table-light">
+                        <tr><th>人工標準答案 / 模型預測</th><th>模型正面</th><th>模型負面</th></tr>
+                    </thead>
+                    <tbody>
+                        <tr><th>實際正面</th><td class="fw-bold text-success">{{ metrics.tp }}</td><td class="fw-bold text-danger">{{ metrics.fn }}</td></tr>
+                        <tr><th>實際負面</th><td class="fw-bold text-danger">{{ metrics.fp }}</td><td class="fw-bold text-success">{{ metrics.tn }}</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </details>
+    {% endif %}
+
+    {% if items %}
+    <div class="review-list">
+        {% for item in items %}
+        <div class="review-row" data-item-id="{{ item.id }}">
+            <div>
+                <div class="review-meta">
+                    <span><i class="fas fa-hospital me-1"></i>{{ item.hospital_name }}</span>
+                    <span><i class="fas fa-star text-warning me-1"></i>{{ item.rating if item.rating is not none else '--' }}</span>
+                </div>
+                <div class="review-content">{{ item.content }}</div>
+            </div>
+            <div>
+                {% if batch.status == 'completed' %}
+                <div class="d-grid gap-2">
+                    <span class="result-pill {{ 'pill-positive' if item.manual_sentiment == 'POSITIVE' else 'pill-negative' }}">
+                        人工 {% if item.manual_sentiment == 'POSITIVE' %}正面{% else %}負面{% endif %}
+                    </span>
+                    <span class="result-pill {{ 'pill-positive' if item.model_sentiment == 'POSITIVE' else 'pill-negative' }}">
+                        模型 {% if item.model_sentiment == 'POSITIVE' %}正面{% else %}負面{% endif %}
+                    </span>
+                    <span class="result-pill {{ 'pill-correct' if item.is_correct else 'pill-wrong' }}">
+                        {% if item.is_correct %}<i class="fas fa-check"></i>正確{% else %}<i class="fas fa-xmark"></i>錯誤{% endif %}
+                    </span>
+                </div>
+                {% else %}
+                <div class="sentiment-options" role="group" aria-label="人工情緒標記">
+                    <input type="radio" class="btn-check" name="manual_{{ item.id }}" id="positive_{{ item.id }}" value="POSITIVE" autocomplete="off">
+                    <label class="btn btn-outline-success" for="positive_{{ item.id }}">正面</label>
+                    <input type="radio" class="btn-check" name="manual_{{ item.id }}" id="negative_{{ item.id }}" value="NEGATIVE" autocomplete="off">
+                    <label class="btn btn-outline-danger" for="negative_{{ item.id }}">負面</label>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    {% if batch.status != 'completed' %}
+    <div class="sticky-submit">
+        <button type="button" class="btn btn-primary btn-lg fw-bold w-100" id="submitAuditBtn">
+            <i class="fas fa-calculator me-1"></i>完成標記並計算結果
+        </button>
+    </div>
+    {% endif %}
+    {% else %}
+    <div class="result-panel text-center text-muted py-5">
+        <i class="fas fa-circle-info fa-2x opacity-50 mb-3"></i>
+        <h5 class="fw-bold text-dark">此批次沒有可抽驗評論</h5>
+        <div>目前資料庫中沒有符合正面或負面且含內容的評論。</div>
+    </div>
+    {% endif %}
+</div>
+
+{% if batch.status != 'completed' and items %}
+<script>
+    const submitBtn = document.getElementById('submitAuditBtn');
+    const alertBox = document.getElementById('auditAlert');
+    const csrfToken = document.getElementById('csrfToken').value;
+
+    function showAlert(message, type = 'danger') {
+        alertBox.className = `alert alert-${type}`;
+        alertBox.textContent = message;
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    submitBtn.addEventListener('click', async () => {
+        const rows = Array.from(document.querySelectorAll('.review-row'));
+        const items = [];
+        for (const row of rows) {
+            const itemId = row.dataset.itemId;
+            const checked = row.querySelector(`input[name="manual_${itemId}"]:checked`);
+            if (!checked) {
+                showAlert('請完成所有評論的人工標記後再送出。');
+                return;
+            }
+            items.push({ item_id: Number(itemId), manual_sentiment: checked.value });
+        }
+
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>計算中';
+        try {
+            const response = await fetch('{{ url_for("submit_sentiment_audit_batch", batch_id=batch.id) }}', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
+                body: JSON.stringify({ items })
+            });
+            const data = await response.json();
+            if (!response.ok || !data.success) throw new Error(data.message || '送出抽驗結果失敗');
+            window.location.href = data.redirect_url;
+        } catch (error) {
+            showAlert(error.message);
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = '<i class="fas fa-calculator me-1"></i>完成標記並計算結果';
+        }
+    });
+</script>
+{% endif %}
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

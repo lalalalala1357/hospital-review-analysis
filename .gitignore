@@ -1,0 +1,31 @@
+# 忽略 Python 編譯檔 (垃圾檔)
+__pycache__/
+*.py[cod]
+
+# 忽略虛擬環境
+venv/
+env/
+.env
+
+# 忽略資料庫 (保護資料，且 DB 檔案不適合上傳)
+*.db
+*.sqlite3
+data/google_reviews.csv
+
+# 忽略 Mac/Windows 系統縮圖檔
+.DS_Store
+Thumbs.db
+
+# 忽略 VS Code 設定檔
+.vscode/
+
+# 忽略 AI 模型下載快取
+cache/
+
+# 忽略瀏覽器自動化與使用者上傳產物
+Chrome_Spider_Profile/
+static/uploads/
+
+# 保留環境變數範本，但不要提交真實金鑰
+.env
+!.env.example

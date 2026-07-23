@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<!--
+==========================================
+🏥 醫院帳號申請狀態：院方補件、重新送審與醫院選擇
+==========================================
+-->
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>醫院帳號申請狀態</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        body { background: #f4f7f6; font-family: "Segoe UI", "Microsoft JhengHei", sans-serif; color: #25364a; }
+        .status-container { max-width: 760px; margin: 56px auto; padding: 0 20px; }
+        .panel { background: #fff; border: 1px solid #e8edf2; border-radius: 8px; padding: 26px; box-shadow: 0 4px 15px rgba(0,0,0,0.04); }
+        .status-badge { display: inline-flex; align-items: center; gap: 8px; padding: 8px 12px; border-radius: 999px; font-weight: 800; }
+        .status-pending { background: #fff6e6; color: #9a6700; }
+        .status-rejected { background: #fff0f1; color: #b02a37; }
+        .status-approved { background: #eaf8ef; color: #146c43; }
+        .hospital-suggest-wrap { position: relative; }
+        .hospital-suggestion-panel {
+            position: absolute;
+            left: 0;
+            right: 0;
+            top: calc(100% + 8px);
+            z-index: 1050;
+            background: #fff;
+            border: 1px solid #dbe4ee;
+            border-radius: 14px;
+            box-shadow: 0 16px 40px rgba(15, 23, 42, 0.16);
+            padding: 8px;
+            max-height: 320px;
+            overflow-y: auto;
+            display: none;
+            text-align: left;
+        }
+        .hospital-suggestion-panel.show { display: block; }
+        .hospital-suggestion-item {
+            width: 100%;
+            border: 0;
+            background: transparent;
+            border-radius: 10px;
+            padding: 12px 14px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            color: #212529;
+            font-weight: 700;
+            text-align: left;
+        }
+        .hospital-suggestion-item i { color: #0066cc; width: 18px; text-align: center; }
+        .hospital-suggestion-item:hover,
+        .hospital-suggestion-item.active {
+            background: #eef6ff;
+            color: #0052a3;
+        }
+        .hospital-suggestion-empty { padding: 14px; color: #6c757d; font-weight: 600; }
+    </style>
+</head>
+<body>
+<div class="status-container">
+    <div class="panel">
+        <div class="d-flex justify-content-between align-items-start gap-3 mb-4">
+            <div>
+                <h3 class="fw-bold mb-2"><i class="fas fa-hospital-user me-2 text-primary"></i>醫院帳號申請狀態</h3>
+                <div class="text-muted">帳號：{{ application.username }}</div>
+            </div>
+            {% if application.approval_status == 'pending' %}
+                <span class="status-badge status-pending"><i class="fas fa-hourglass-half"></i>待審核</span>
+            {% elif application.approval_status == 'rejected' %}
+                <span class="status-badge status-rejected"><i class="fas fa-circle-xmark"></i>已退回</span>
+            {% else %}
+                <span class="status-badge status-approved"><i class="fas fa-circle-check"></i>已核准</span>
+            {% endif %}
+        </div>
+
+        {% if application.approval_status == 'pending' %}
+            <div class="alert alert-warning border-0">
+                管理員正在審核你的院方身分。審核通過後，重新登入即可查看院方儀表板。
+            </div>
+            <a href="{{ url_for('logout') }}" class="btn btn-outline-secondary">登出</a>
+        {% elif application.approval_status == 'rejected' %}
+            <div class="alert alert-danger border-0">
+                <div class="fw-bold mb-1">退回原因</div>
+                <div>{{ application.rejection_reason or '申請資料不足，請補齊後重新送審' }}</div>
+            </div>
+            <h5 class="fw-bold mt-4 mb-3">修改資料並重新申請</h5>
+            <form method="POST" action="{{ url_for('hospital_application_status') }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                <div class="mb-3 hospital-suggest-wrap">
+                    <label class="form-label fw-bold">申請綁定醫院</label>
+                    <input type="text" id="requestedHospitalInput" name="requested_hospital_name" class="form-control" value="{{ application.requested_hospital_name or '' }}" autocomplete="off" required>
+                    <div id="hospitalSuggestions" class="hospital-suggestion-panel" role="listbox" aria-label="醫院建議清單"></div>
+                </div>
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold">聯絡人 / 職稱</label>
+                        <input type="text" name="contact_name" class="form-control" value="{{ application.contact_name or '' }}" required>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold">官方 Email</label>
+                        <input type="email" name="official_email" class="form-control" value="{{ application.official_email or '' }}" required>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold">醫院電話 / 分機</label>
+                        <input type="text" name="contact_phone" class="form-control" value="{{ application.contact_phone or '' }}" required>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold">醫事機構代碼（選填）</label>
+                        <input type="text" name="institution_code" class="form-control" value="{{ application.institution_code or '' }}">
+                    </div>
+                </div>
+                <button type="submit" class="btn btn-primary mt-4">
+                    <i class="fas fa-paper-plane me-1"></i>重新送審
+                </button>
+                <a href="{{ url_for('logout') }}" class="btn btn-outline-secondary mt-4 ms-2">登出</a>
+            </form>
+        {% else %}
+            <div class="alert alert-success border-0">
+                你的醫院帳號已核准，可以前往院方儀表板。
+            </div>
+            <a href="{{ url_for('hospital_dashboard') }}" class="btn btn-primary">前往院方儀表板</a>
+        {% endif %}
+    </div>
+</div>
+
+<script>
+    const allHospitals = {{ all_hospitals | default([]) | tojson | safe }};
+    const hospitalInput = document.getElementById('requestedHospitalInput');
+    const hospitalSuggestions = document.getElementById('hospitalSuggestions');
+    let activeHospitalSuggestionIndex = -1;
+
+    function hideHospitalSuggestions() {
+        if (!hospitalSuggestions) return;
+        hospitalSuggestions.classList.remove('show');
+        hospitalSuggestions.innerHTML = '';
+        activeHospitalSuggestionIndex = -1;
+    }
+
+    function chooseHospitalSuggestion(name) {
+        hospitalInput.value = name;
+        hideHospitalSuggestions();
+        hospitalInput.focus();
+    }
+
+    function updateActiveHospitalSuggestion(items) {
+        items.forEach((item, index) => item.classList.toggle('active', index === activeHospitalSuggestionIndex));
+        items[activeHospitalSuggestionIndex]?.scrollIntoView({ block: 'nearest' });
+    }
+
+    function renderHospitalSuggestions() {
+        if (!hospitalInput || !hospitalSuggestions) return;
+        const keyword = hospitalInput.value.trim().toLowerCase();
+        hospitalSuggestions.innerHTML = '';
+        activeHospitalSuggestionIndex = -1;
+        if (!keyword) {
+            hideHospitalSuggestions();
+            return;
+        }
+
+        const matches = allHospitals
+            .filter(name => String(name).toLowerCase().includes(keyword))
+            .slice(0, 20);
+
+        if (!matches.length) {
+            const empty = document.createElement('div');
+            empty.className = 'hospital-suggestion-empty';
+            empty.textContent = '沒有找到符合的醫院';
+            hospitalSuggestions.appendChild(empty);
+            hospitalSuggestions.classList.add('show');
+            return;
+        }
+
+        matches.forEach(name => {
+            const button = document.createElement('button');
+            button.type = 'button';
+            button.className = 'hospital-suggestion-item';
+            button.setAttribute('role', 'option');
+            const icon = document.createElement('i');
+            icon.className = 'fas fa-hospital';
+            const text = document.createElement('span');
+            text.textContent = name;
+            button.append(icon, text);
+            button.addEventListener('mousedown', event => {
+                event.preventDefault();
+                chooseHospitalSuggestion(name);
+            });
+            hospitalSuggestions.appendChild(button);
+        });
+        hospitalSuggestions.classList.add('show');
+    }
+
+    hospitalInput?.addEventListener('input', renderHospitalSuggestions);
+    hospitalInput?.addEventListener('focus', renderHospitalSuggestions);
+    hospitalInput?.addEventListener('blur', () => setTimeout(hideHospitalSuggestions, 120));
+    hospitalInput?.addEventListener('keydown', event => {
+        const items = Array.from(hospitalSuggestions?.querySelectorAll('.hospital-suggestion-item') || []);
+        if (!hospitalSuggestions?.classList.contains('show') || !items.length) return;
+        if (event.key === 'ArrowDown') {
+            event.preventDefault();
+            activeHospitalSuggestionIndex = (activeHospitalSuggestionIndex + 1) % items.length;
+            updateActiveHospitalSuggestion(items);
+        } else if (event.key === 'ArrowUp') {
+            event.preventDefault();
+            activeHospitalSuggestionIndex = (activeHospitalSuggestionIndex - 1 + items.length) % items.length;
+            updateActiveHospitalSuggestion(items);
+        } else if (event.key === 'Enter' && activeHospitalSuggestionIndex >= 0) {
+            event.preventDefault();
+            items[activeHospitalSuggestionIndex].dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
+        } else if (event.key === 'Escape') {
+            hideHospitalSuggestions();
+        }
+    });
+</script>
+</body>
+</html>

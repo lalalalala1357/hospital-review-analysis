@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<!--
+==========================================
+🩺 AI 症狀智能分流：輸入症狀後回傳白話掛號建議
+==========================================
+-->
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI 症狀智能分流 | 醫院評論分析</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
+    
+    <style>
+        body { background-color: #f4f6f9; font-family: "Microsoft JhengHei", sans-serif; transition: all 0.3s; }
+        .main-container { max-width: 750px; margin: 30px auto; padding: 0 15px; }
+        
+        /* 頂部工具列 (回首頁 & 長者模式) */
+        .top-toolbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .back-link { color: #6c757d; text-decoration: none; font-weight: bold; font-size: 1.1rem; transition: color 0.2s; }
+        .back-link:hover { color: #2c63c6; }
+        /* 🤖 藍色標題區塊 */
+        .header-box {
+            background-color: #2c63c6; /* 你截圖中漂亮的藍色 */
+            color: white; padding: 40px 20px;
+            border-radius: 16px 16px 0 0; text-align: center;
+        }
+        .header-box h2 { font-weight: 700; margin-bottom: 10px; font-size: 2rem; }
+        .header-box p {
+            display: inline-block; color: #153b78; background: rgba(255,255,255,0.9);
+            margin-bottom: 0; padding: 6px 14px; border-radius: 999px;
+            font-size: 1.1rem; font-weight: 800;
+        }
+
+        /* 💬 白色輸入區塊 */
+        .input-box {
+            background-color: white; padding: 35px 40px;
+            border-radius: 0 0 16px 16px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+        }
+        
+        /* 懸浮麥克風按鈕 */
+        .textarea-wrapper { position: relative; }
+        .form-control-custom {
+            border-radius: 12px; padding: 20px; padding-bottom: 65px;
+            background-color: #fcfcfc; border: 1px solid #e0e0e0;
+            resize: none; transition: all 0.3s;
+        }
+        .form-control-custom:focus {
+            background-color: #fff; border-color: #2c63c6; box-shadow: 0 0 0 0.25rem rgba(44, 99, 198, 0.1);
+        }
+        .mic-btn {
+            position: absolute; bottom: 15px; right: 15px;
+            background-color: white; border: 1px solid #ddd; border-radius: 50%;
+            width: 45px; height: 45px; display: flex; align-items: center; justify-content: center;
+            cursor: pointer; transition: all 0.2s; box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+            z-index: 10;
+        }
+        .mic-btn:hover { background-color: #f8f9fa; transform: scale(1.05); }
+        
+        /* 錄音呼吸燈動畫 */
+        @keyframes pulse { 
+            0% { box-shadow: 0 0 0 0 rgba(220, 53, 69, 0.6); } 
+            70% { box-shadow: 0 0 0 15px rgba(220, 53, 69, 0); } 
+            100% { box-shadow: 0 0 0 0 rgba(220, 53, 69, 0); } 
+        }
+        .recording { 
+            animation: pulse 1.5s infinite; background-color: #fff0f0 !important; 
+            border-color: #dc3545 !important; 
+        }
+
+        /* 圓弧送出按鈕 */
+        .btn-submit-custom {
+            background-color: #2c63c6; color: white; border: none; border-radius: 50px;
+            padding: 14px 30px; font-weight: bold; font-size: 1.15rem; width: 100%; transition: all 0.3s;
+        }
+        .btn-submit-custom:hover { background-color: #2250a5; transform: translateY(-2px); box-shadow: 0 4px 10px rgba(44, 99, 198, 0.3); }
+        .triage-result-card {
+            background: #fff; border: 1px solid #e7edf5; border-radius: 14px;
+            box-shadow: 0 8px 24px rgba(20, 36, 64, 0.08); overflow: hidden;
+        }
+        .triage-section { padding: 22px 26px; border-bottom: 1px solid #edf1f6; }
+        .triage-section:last-child { border-bottom: 0; }
+        .triage-section-title {
+            display: flex; align-items: center; gap: 10px; margin-bottom: 12px;
+            font-size: 1.15rem; font-weight: 800; color: #1f2a37;
+        }
+        .triage-icon {
+            width: 36px; height: 36px; border-radius: 8px; display: inline-flex;
+            align-items: center; justify-content: center; flex-shrink: 0;
+            background: #eef5ff; color: #2c63c6;
+        }
+        .triage-icon.warning { background: #fff7e6; color: #f0a400; }
+        .triage-dept {
+            font-size: 1.6rem; font-weight: 900; color: #1f2a37; line-height: 1.35;
+        }
+        .triage-note-box {
+            background: #e9fbff; border: 1px solid #9ee8f5; color: #155263;
+            border-radius: 10px; padding: 14px 16px; font-weight: 800; line-height: 1.7;
+        }
+        .triage-body { color: #252b33; font-size: 1.02rem; line-height: 1.85; }
+        .triage-body p { margin-bottom: 12px; }
+        .triage-list { margin: 0; padding-left: 1.2rem; }
+        .triage-list li { margin-bottom: 10px; padding-left: 4px; }
+        .triage-footer { color: #6b7280; font-size: 0.92rem; line-height: 1.7; }
+        #resultContainer .card {
+            border: 1px solid #e7edf5 !important; border-radius: 14px !important;
+            box-shadow: 0 8px 24px rgba(20, 36, 64, 0.08) !important;
+        }
+    </style>
+</head>
+<body>
+
+{% include 'navbar.html' %}
+
+<div class="main-container">
+    
+    <div class="top-toolbar">
+        <a href="{{ url_for('index') }}" class="back-link"><i class="fas fa-arrow-left me-2"></i>回首頁</a>
+        
+        <div class="d-flex align-items-center gap-2">
+            <div id="lang-select-zone" class="d-none align-items-center bg-white px-3 py-1 rounded-pill shadow-sm border border-info">
+                <span class="fw-bold text-info small mb-0"><i class="fas fa-microphone-alt me-1"></i>僅支援中文語音</span>
+            </div>
+            
+            <button id="btn-elderly-mode" class="btn btn-outline-secondary rounded-pill fw-bold shadow-sm" onclick="toggleElderlyMode()">
+                <i class="fas fa-blind me-1"></i> 長者友善模式
+            </button>
+        </div>
+    </div>
+
+    <div class="header-box">
+        <h2><i class="fas fa-robot me-2"></i>AI 症狀智能分流</h2>
+        <p>描述您的不適，讓系統為您提供初步就醫建議</p>
+    </div>
+
+    <div class="input-box">
+        <form action="/symptom_checker" method="POST" id="symptomForm">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+            
+            <h5 id="label-symptoms" class="fw-bold mb-3" style="color: #2c63c6;">
+                <i class="fas fa-comment-dots me-2"></i>請描述您的不適症狀：
+            </h5>
+            
+            <div class="textarea-wrapper mb-4">
+                <textarea name="symptoms" id="symptoms" class="form-control form-control-custom fs-5" rows="5" placeholder="例如：今天早上開始覺得胸口悶悶的，有點喘不過氣，而且伴隨頭暈... (請盡量詳細描述)" required>{% if request.form.symptoms %}{{ request.form.symptoms }}{% endif %}</textarea>
+                
+                <button class="mic-btn" type="button" id="btn-mic" onclick="startVoiceRecognition()" title="點擊開始語音輸入">
+                    <i class="fas fa-microphone fa-lg text-secondary" id="mic-icon"></i>
+                </button>
+            </div>
+            
+            <div id="voice-status" class="text-danger fw-bold small mb-3 text-center d-none animate__animated animate__pulse animate__infinite">
+                <i class="fas fa-wave-square me-2"></i>正在聆聽中，請直接對著麥克風說話...
+            </div>
+
+            <button type="submit" id="btn-submit-checker" class="btn-submit-custom">
+                <i class="fas fa-stethoscope me-2"></i>開始分析評估
+            </button>
+        </form>
+    </div>
+    
+    <div id="resultContainer" class="mt-4 animate__animated animate__fadeInUp"></div>
+
+</div>
+
+<script>
+    // ==========================================
+    // 🩺 症狀分流互動：語音輸入、長者模式、送出與結果排版
+    // ==========================================
+    // 1. 語音辨識初始化
+    let recognition;
+    if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        recognition = new SpeechRecognition();
+        recognition.continuous = false; 
+        recognition.interimResults = false; 
+
+        recognition.lang = 'zh-TW';
+
+        recognition.onresult = function(event) {
+            const resultText = event.results[0][0].transcript;
+            const textarea = document.getElementById('symptoms');
+            if (textarea.value) { textarea.value += ' ' + resultText; } 
+            else { textarea.value = resultText; }
+            stopMicUI();
+        };
+
+        recognition.onerror = function(event) {
+            console.error('語音辨識錯誤:', event.error);
+            stopMicUI();
+            alert('語音辨識不夠清晰或麥克風未授權，請再試一次。');
+        };
+
+        recognition.onend = function() { stopMicUI(); };
+    } else {
+        document.getElementById('btn-mic').style.display = 'none';
+    }
+
+    function startVoiceRecognition() {
+        if (!recognition) return alert('您的瀏覽器不支援語音輸入功能，請使用最新版 Chrome。');
+        
+        const micBtn = document.getElementById('btn-mic');
+        const micIcon = document.getElementById('mic-icon');
+        const statusDiv = document.getElementById('voice-status');
+        
+        // 如果正在錄音，就停止
+        if (micBtn.classList.contains('recording')) {
+            recognition.stop();
+            return;
+        }
+
+        // 🎯 終極防呆：不管三七二十一，直接強制綁定台灣國語！
+        recognition.lang = 'zh-TW';
+        console.log("目前語音模式：強制國語 zh-TW");
+
+        // 開啟 UI 錄音動畫效果
+        micBtn.classList.add('recording');
+        micIcon.classList.replace('text-secondary', 'text-danger');
+        micIcon.classList.add('fa-fade');
+        statusDiv.classList.remove('d-none');
+        
+        recognition.start();
+    }
+
+    function stopMicUI() {
+        const micBtn = document.getElementById('btn-mic');
+        const micIcon = document.getElementById('mic-icon');
+        const statusDiv = document.getElementById('voice-status');
+        
+        micBtn.classList.remove('recording');
+        micIcon.classList.replace('text-danger', 'text-secondary');
+        micIcon.classList.remove('fa-fade');
+        statusDiv.classList.add('d-none');
+    }
+
+    function escapeHTML(str) {
+        return String(str || '').replace(/[&<>'"]/g, tag => ({
+            '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;'
+        }[tag]));
+    }
+
+    function inlineFormat(text) {
+        return escapeHTML(text)
+            .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+            .replace(/「([^」]+)」/g, '<strong>「$1」</strong>');
+    }
+
+    function cleanMarkdownLine(line) {
+        return line
+            .replace(/^\s*[-*•]\s*/, '')
+            .replace(/^\s*\d+[.)]\s*/, '')
+            .replace(/\s+/g, ' ')
+            .trim();
+    }
+
+    function renderMarkdownSymptomResult(raw) {
+        const text = String(raw || '').replace(/```html|```/g, '').trim();
+        if (/<\s*(div|section|article|h[1-6]|p|ul|ol|li|table|blockquote)\b/i.test(text) && !text.includes('**')) {
+            return text;
+        }
+
+        const lines = text.split(/\r?\n/).map(line => line.trim()).filter(Boolean);
+        const titleLine = lines.find(line => /建議掛號科別/.test(line));
+        const urgencyIndex = lines.findIndex(line => /緊急程度評估/.test(line));
+        const adviceIndex = lines.findIndex(line => /護理師|叮嚀|對策|觀察/.test(line));
+        const noteIndex = lines.findIndex(line => /注意/.test(line));
+
+        const departments = titleLine
+            ? cleanMarkdownLine(titleLine.replace(/建議掛號科別[:：]?/g, ''))
+            : cleanMarkdownLine(lines[0] || '建議由門診醫師進一步評估');
+        const urgencyText = urgencyIndex >= 0
+            ? cleanMarkdownLine(lines[urgencyIndex + 1] || lines[urgencyIndex])
+            : '若症狀劇烈、持續惡化或伴隨冒冷汗、意識不清、呼吸困難，請立即前往急診。';
+        const adviceLines = lines
+            .slice(adviceIndex >= 0 ? adviceIndex + 1 : 0, noteIndex >= 0 ? noteIndex : lines.length)
+            .map(cleanMarkdownLine)
+            .filter(line => line && !/建議掛號科別|緊急程度評估|護理師/.test(line));
+        const noteText = noteIndex >= 0
+            ? cleanMarkdownLine(lines.slice(noteIndex).join(' '))
+            : '注意：此結果由 AI 提供，僅供掛號前參考，不能取代醫師診斷。';
+
+        const adviceHtml = adviceLines.length
+            ? `<ol class="triage-list">${adviceLines.map(line => `<li>${inlineFormat(line)}</li>`).join('')}</ol>`
+            : '<p>請持續觀察症狀變化，若不適加劇請儘速就醫。</p>';
+
+        return `
+            <div class="triage-result-card">
+                <section class="triage-section">
+                    <div class="triage-section-title">
+                        <span class="triage-icon"><i class="fas fa-stethoscope"></i></span>
+                        建議掛號科別
+                    </div>
+                    <div class="triage-dept">${inlineFormat(departments)}</div>
+                </section>
+                <section class="triage-section">
+                    <div class="triage-section-title">
+                        <span class="triage-icon warning"><i class="fas fa-triangle-exclamation"></i></span>
+                        緊急程度評估
+                    </div>
+                    <div class="triage-note-box">${inlineFormat(urgencyText)}</div>
+                </section>
+                <section class="triage-section">
+                    <div class="triage-section-title">
+                        <span class="triage-icon"><i class="fas fa-circle-info"></i></span>
+                        護理師小叮嚀
+                    </div>
+                    <div class="triage-body">${adviceHtml}</div>
+                </section>
+                <section class="triage-section">
+                    <div class="triage-footer">${inlineFormat(noteText)}</div>
+                </section>
+            </div>
+        `;
+    }
+
+    // 2. 長者友善模式切換 (排版與字體放大)
+    let isElderlyMode = false;
+
+    function toggleElderlyMode() {
+        isElderlyMode = !isElderlyMode;
+        const btn = document.getElementById('btn-elderly-mode');
+        const textarea = document.getElementById('symptoms');
+        const label = document.getElementById('label-symptoms');
+        const submitBtn = document.getElementById('btn-submit-checker');
+        const langZone = document.getElementById('lang-select-zone');
+        const micBtn = document.getElementById('btn-mic');
+        const micIcon = document.getElementById('mic-icon');
+        
+        if (isElderlyMode) {
+            btn.innerHTML = '<i class="fas fa-check-circle me-1"></i> 已開啟長者模式';
+            btn.classList.replace('btn-outline-secondary', 'btn-info');
+            btn.classList.add('text-white');
+            
+            langZone.classList.replace('d-none', 'd-flex');
+            
+            // 🌟 字體與按鈕暴力放大
+            textarea.style.fontSize = '2.2rem'; 
+            textarea.style.height = '300px';
+            label.style.fontSize = '1.8rem';    
+            submitBtn.style.fontSize = '1.8rem'; 
+            submitBtn.style.padding = '20px';
+            
+            // 麥克風變超大顆
+            micBtn.style.width = '70px';
+            micBtn.style.height = '70px';
+            micIcon.classList.replace('fa-lg', 'fa-2x');
+            
+            document.body.style.fontSize = '1.3rem';
+        } else {
+            btn.innerHTML = '<i class="fas fa-blind me-1"></i> 長者友善模式';
+            btn.classList.replace('btn-info', 'btn-outline-secondary');
+            btn.classList.remove('text-white');
+            
+            langZone.classList.replace('d-flex', 'd-none');
+            
+            // 恢復原狀
+            textarea.style.fontSize = '';
+            textarea.style.height = '';
+            label.style.fontSize = '';
+            submitBtn.style.fontSize = '';
+            submitBtn.style.padding = '';
+            
+            micBtn.style.width = '';
+            micBtn.style.height = '';
+            micIcon.classList.replace('fa-2x', 'fa-lg');
+            
+            document.body.style.fontSize = '';
+        }
+    }
+
+    // 3. 攔截表單送出，改用背景 Fetch 請求 AI (防止畫面跳轉印出 JSON)
+    document.getElementById('symptomForm').addEventListener('submit', async function(e) {
+        e.preventDefault(); // 🛑 攔截傳統的跳轉換頁
+
+        const form = e.target;
+        const formData = new FormData(form);
+        const resultContainer = document.getElementById('resultContainer');
+        const submitBtn = document.getElementById('btn-submit-checker');
+
+        // 鎖定按鈕並顯示讀取中動畫
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>AI 護理師正在為您評估中...';
+        resultContainer.innerHTML = ''; 
+
+        try {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 30000);
+            // 發送請求給後端
+            const response = await fetch("/symptom_checker", {
+                method: 'POST',
+                body: formData,
+                signal: controller.signal
+            });
+            clearTimeout(timeoutId);
+
+            const data = await response.json(); // 解析後端回傳的 JSON
+
+            // 把後端給的漂亮 HTML 卡片塞進空箱子裡
+            if (data.result) {
+                resultContainer.innerHTML = renderMarkdownSymptomResult(data.result) + `
+                    <div class="text-center mt-4 mb-5">
+                        <button type="button" onclick="document.getElementById('symptoms').value=''; document.getElementById('resultContainer').innerHTML='';" class="btn btn-outline-secondary rounded-pill px-4 shadow-sm">
+                            <i class="fas fa-redo me-1"></i> 清除並重新評估
+                        </button>
+                    </div>`;
+            } else if (data.error) {
+                resultContainer.innerHTML = `<div class="alert alert-danger shadow-sm border-0 rounded-4"><i class="fas fa-exclamation-triangle me-2"></i>${data.error}</div>`;
+            }
+
+        } catch (error) {
+            console.error("發生錯誤:", error);
+            const message = error.name === 'AbortError'
+                ? '評估時間過久，請稍後再試，或先用較簡短的症狀描述重新送出。'
+                : '系統連線失敗，請稍後再試。';
+            resultContainer.innerHTML = `<div class="alert alert-danger shadow-sm border-0 rounded-4">${message}</div>`;
+        } finally {
+            // 恢復按鈕狀態
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = '<i class="fas fa-stethoscope me-2"></i>開始分析評估';
+        }
+    });
+</script>
+</body>
+</html>

@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<!--
+==========================================
+📊 管理總覽：後台統計卡、趨勢圖與系統狀態摘要
+==========================================
+-->
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>管理總覽 | 醫院評論分析</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <style>
+        body { background-color: #f4f7f6; font-family: "Segoe UI", "Microsoft JhengHei", sans-serif; color: #25364a; }
+        .main-container { max-width: 1220px; margin: 34px auto; padding: 0 20px; }
+        .page-head { display: flex; justify-content: space-between; align-items: end; gap: 20px; margin-bottom: 24px; }
+        .page-title { font-weight: 800; margin: 0; }
+        .page-subtitle { color: #6c757d; margin: 6px 0 0; }
+        .stat-card, .panel {
+            background: #fff; border: 1px solid #e8edf2; border-radius: 8px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.04);
+        }
+        .stat-card { padding: 18px; min-height: 122px; display: flex; justify-content: space-between; align-items: center; }
+        .stat-label { color: #6c757d; font-weight: 700; font-size: 0.88rem; margin-bottom: 8px; }
+        .stat-value { font-size: 1.9rem; font-weight: 800; line-height: 1; }
+        .stat-note { color: #8492a6; font-size: 0.84rem; margin-top: 8px; }
+        .stat-icon {
+            width: 52px; height: 52px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+            font-size: 21px; background: #eef6ff; color: #0066cc; flex-shrink: 0;
+        }
+        .stat-icon.green { background: #eaf8ef; color: #198754; }
+        .stat-icon.red { background: #fff0f1; color: #dc3545; }
+        .stat-icon.orange { background: #fff6e6; color: #f59f00; }
+        .panel { padding: 22px; height: 100%; }
+        .panel-title { font-weight: 800; margin-bottom: 16px; }
+        .chart-box { height: 285px; }
+        .row-item { padding: 12px 0; border-bottom: 1px solid #f1f3f5; }
+        .row-item:last-child { border-bottom: 0; }
+        .mini-bar { height: 8px; background: #f1f3f5; border-radius: 999px; overflow: hidden; }
+        .mini-bar span { display: block; height: 100%; border-radius: 999px; }
+        .issue-grid { display: grid; grid-template-columns: 118px 1fr 56px; align-items: center; gap: 12px; }
+        .quick-action {
+            display: flex; align-items: center; justify-content: space-between; gap: 12px;
+            padding: 14px 16px; border: 1px solid #e8edf2; border-radius: 8px;
+            text-decoration: none; color: #25364a; background: #fff; transition: 0.18s ease;
+        }
+        .quick-action:hover { transform: translateY(-2px); box-shadow: 0 8px 18px rgba(0,0,0,0.06); color: #0066cc; }
+        .status-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; margin-right: 8px; }
+        .status-ok { background: #198754; }
+        .status-bad { background: #dc3545; }
+        .alert-list { display: grid; gap: 10px; }
+        .alert-item {
+            display: flex; align-items: center; justify-content: space-between; gap: 12px;
+            padding: 12px 14px; border: 1px solid #e8edf2; border-radius: 8px; background: #fff;
+        }
+        .alert-item.danger { border-color: #f1b0b7; background: #fff8f8; }
+        .status-row {
+            width: 100%; border: 0; background: transparent; text-align: left;
+            padding: 12px 0; border-bottom: 1px solid #f1f3f5;
+            display: flex; justify-content: space-between; align-items: center; gap: 12px;
+        }
+        .status-row:hover { color: #0066cc; }
+        .status-detail {
+            background: #f8fafc; border: 1px solid #e8edf2; border-radius: 8px;
+            padding: 12px; margin: 10px 0 14px; font-size: 0.9rem;
+        }
+        @media (max-width: 768px) {
+            .page-head { display: block; }
+            .issue-grid { grid-template-columns: 92px 1fr 48px; }
+            .chart-box { height: 250px; }
+        }
+    </style>
+</head>
+<body>
+    {% include 'navbar.html' %}
+
+    <div class="main-container">
+        <div class="page-head">
+            <div>
+                <h2 class="page-title"><i class="fas fa-gauge-high me-2 text-primary"></i>管理總覽</h2>
+                <p class="page-subtitle">供管理員監控資料量、服務風險、待改善醫院與系統狀態。</p>
+            </div>
+            <div class="d-flex gap-2 flex-wrap">
+                <a href="{{ url_for('admin_page') }}" class="btn btn-outline-danger">
+                    <i class="fas fa-screwdriver-wrench me-1"></i> 後台管理
+                </a>
+                <a href="{{ url_for('google_page') }}" class="btn btn-primary">
+                    <i class="fas fa-search me-1"></i> 分析新醫院
+                </a>
+            </div>
+        </div>
+
+        <div class="row g-3 mb-4">
+            <div class="col-lg-3 col-sm-6">
+                <div class="stat-card">
+                    <div>
+                        <div class="stat-label">今日新增評論</div>
+                        <div class="stat-value" id="todayReviews">--</div>
+                        <div class="stat-note">今日更新 <span id="todayHospitals">--</span> 家醫院</div>
+                    </div>
+                    <div class="stat-icon orange"><i class="fas fa-calendar-day"></i></div>
+                </div>
+            </div>
+            <div class="col-lg-3 col-sm-6">
+                <div class="stat-card">
+                    <div>
+                        <div class="stat-label">總評論數</div>
+                        <div class="stat-value" id="totalReviews">--</div>
+                        <div class="stat-note">收錄 <span id="totalHospitals">--</span> 家醫院</div>
+                    </div>
+                    <div class="stat-icon"><i class="fas fa-database"></i></div>
+                </div>
+            </div>
+            <div class="col-lg-3 col-sm-6">
+                <div class="stat-card">
+                    <div>
+                        <div class="stat-label">負評比例</div>
+                        <div class="stat-value text-danger" id="negativeRate">--</div>
+                        <div class="stat-note"><span id="negativeCount">--</span> 則負評需要追蹤</div>
+                    </div>
+                    <div class="stat-icon red"><i class="fas fa-triangle-exclamation"></i></div>
+                </div>
+            </div>
+            <div class="col-lg-3 col-sm-6">
+                <div class="stat-card">
+                    <div>
+                        <div class="stat-label">會員數</div>
+                        <div class="stat-value" id="totalUsers">--</div>
+                        <div class="stat-note">已註冊使用者</div>
+                    </div>
+                    <div class="stat-icon green"><i class="fas fa-users"></i></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row g-4 mb-4">
+            <div class="col-lg-8">
+                <div class="panel">
+                    <h5 class="panel-title"><i class="fas fa-chart-line me-2 text-primary"></i>近 7 天評論趨勢</h5>
+                    <div class="chart-box"><canvas id="trendChart"></canvas></div>
+                </div>
+            </div>
+            <div class="col-lg-4">
+                <div class="panel">
+                    <h5 class="panel-title"><i class="fas fa-bell me-2 text-danger"></i>今日重點</h5>
+                    <div id="alertList" class="alert-list"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row g-4">
+            <div class="col-lg-4">
+                <div class="panel">
+                    <h5 class="panel-title"><i class="fas fa-chart-pie me-2 text-primary"></i>整體情緒監控</h5>
+                    <div class="chart-box"><canvas id="sentimentChart"></canvas></div>
+                </div>
+            </div>
+            <div class="col-lg-4">
+                <div class="panel">
+                    <h5 class="panel-title"><i class="fas fa-hospital-user me-2 text-danger"></i>高風險醫院</h5>
+                    <div id="riskHospitals"></div>
+                </div>
+            </div>
+            <div class="col-lg-4">
+                <div class="panel">
+                    <h5 class="panel-title"><i class="fas fa-server me-2 text-primary"></i>系統狀態</h5>
+                    <div id="systemStatus"></div>
+                </div>
+            </div>
+            <div class="col-lg-6">
+                <div class="panel">
+                    <h5 class="panel-title"><i class="fas fa-list-ol me-2 text-danger"></i>待改善負評原因</h5>
+                    <div id="issueList"></div>
+                </div>
+            </div>
+            <div class="col-lg-6">
+                <div class="panel">
+                    <h5 class="panel-title"><i class="fas fa-clock-rotate-left me-2 text-primary"></i>最近更新醫院</h5>
+                    <div id="recentHospitals"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        function fmt(value) {
+            return Number(value || 0).toLocaleString('zh-TW');
+        }
+
+        function escapeHTML(str) {
+            if (!str) return '';
+            return String(str).replace(/[&<>'"]/g, tag => ({
+                '&': '&amp;',
+                '<': '&lt;',
+                '>': '&gt;',
+                "'": '&#39;',
+                '"': '&quot;'
+            }[tag] || tag));
+        }
+
+        function renderIssues(issues) {
+            const box = document.getElementById('issueList');
+            if (!issues || issues.length === 0) {
+                box.innerHTML = '<div class="text-muted text-center py-5">目前尚無負評原因資料</div>';
+                return;
+            }
+
+            const maxCount = issues[0].count || 1;
+            box.innerHTML = issues.map(item => {
+                const width = Math.max(Math.round(item.count / maxCount * 100), 5);
+                return `
+                    <div class="row-item issue-grid">
+                        <div class="fw-bold">${escapeHTML(item.issue_category)}</div>
+                        <div class="mini-bar"><span class="bg-danger" style="width: ${width}%"></span></div>
+                        <div class="text-end fw-bold text-danger">${fmt(item.count)}</div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function renderRiskHospitals(hospitals) {
+            const box = document.getElementById('riskHospitals');
+            if (!hospitals || hospitals.length === 0) {
+                box.innerHTML = '<div class="text-muted text-center py-5">目前沒有達到風險條件的醫院</div>';
+                return;
+            }
+
+            box.innerHTML = hospitals.map(h => `
+                <div class="row-item">
+                    <div class="d-flex justify-content-between gap-3">
+                        <div>
+                            <div class="fw-bold">${escapeHTML(h.name)}</div>
+                            <div class="small text-muted">${fmt(h.review_count)} 則評論 · ${fmt(h.negative_count)} 則負評</div>
+                        </div>
+                        <span class="badge text-bg-danger align-self-start">${h.negative_rate}%</span>
+                    </div>
+                    <div class="mini-bar mt-2"><span class="bg-danger" style="width: ${Math.max(h.negative_rate, 5)}%"></span></div>
+                </div>
+            `).join('');
+        }
+
+        function renderRecentHospitals(hospitals) {
+            const box = document.getElementById('recentHospitals');
+            if (!hospitals || hospitals.length === 0) {
+                box.innerHTML = '<div class="text-muted text-center py-4">目前尚無醫院資料</div>';
+                return;
+            }
+
+            box.innerHTML = hospitals.map(h => `
+                <div class="row-item">
+                    <div class="d-flex justify-content-between gap-3">
+                        <div>
+                            <div class="fw-bold">${escapeHTML(h.name)}</div>
+                            <div class="small text-muted">${escapeHTML(h.last_activity || '--')} · ${fmt(h.review_count)} 則評論</div>
+                        </div>
+                        <span class="badge bg-success-subtle text-success border border-success-subtle align-self-start">${h.positive_rate}% 正評</span>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function renderSystemStatus(status) {
+            const box = document.getElementById('systemStatus');
+            const usage = status.gemini_usage || {};
+            const remaining = usage.estimated_remaining_today === null || usage.estimated_remaining_today === undefined
+                ? '未設定每日上限'
+                : `${fmt(usage.estimated_remaining_today)} 次`;
+            const modelUsage = (usage.model_usage_today || []).length
+                ? usage.model_usage_today.map(item => `${escapeHTML(item.model)}：${fmt(item.count)} 次`).join('<br>')
+                : '今日尚無成功呼叫';
+            const fallbackText = usage.fallback_enabled
+                ? `已啟用，依序嘗試：${escapeHTML((usage.models || []).join('、'))}`
+                : '未啟用，請在 GOOGLE_GEMINI_MODELS 設定多個模型';
+            const blockedModels = usage.blocked_models || {};
+            const blockedModelNames = Object.keys(blockedModels);
+            const blockedModelText = blockedModelNames.length
+                ? blockedModelNames.map(model => {
+                    const blocked = blockedModels[model] || {};
+                    return `${escapeHTML(model)}：恢復時間 ${escapeHTML(blocked.blocked_until || '--')}`;
+                }).join('<br>')
+                : '目前沒有被暫停嘗試的模型';
+
+            box.innerHTML = `
+                <button type="button" class="status-row" onclick="toggleStatusDetail('sentimentDetail')">
+                    <span><span class="status-dot ${status.sentiment_model ? 'status-ok' : 'status-bad'}"></span>情感分析模型</span>
+                    <span class="fw-bold ${status.sentiment_model ? 'text-success' : 'text-danger'}">${status.sentiment_model ? '正常' : '未載入'}</span>
+                </button>
+                <div id="sentimentDetail" class="status-detail d-none">
+                    <div class="fw-bold mb-1">模型：${escapeHTML(status.sentiment_model_name || '--')}</div>
+                    <div class="text-muted">這是本機載入的 Transformers 情感分析模型；可能因套件缺失、模型下載失敗、記憶體不足或啟動時載入失敗而故障。</div>
+                </div>
+
+                <button type="button" class="status-row" onclick="toggleStatusDetail('geminiDetail')">
+                    <span><span class="status-dot ${status.gemini_configured ? 'status-ok' : 'status-bad'}"></span>Gemini API 設定</span>
+                    <span class="fw-bold ${status.gemini_configured ? 'text-success' : 'text-danger'}">${status.gemini_configured ? '正常' : '未啟用'}</span>
+                </button>
+                <div id="geminiDetail" class="status-detail d-none">
+                    <div><strong>目前模型：</strong>${escapeHTML(usage.active_model || '--')}</div>
+                    <div><strong>今日成功呼叫：</strong>${fmt(usage.today_used)} 次</div>
+                    <div><strong>本月成功呼叫：</strong>${fmt(usage.month_used)} 次</div>
+                    <div><strong>估算今日剩餘：</strong>${remaining}</div>
+                    <div><strong>今日模型使用：</strong><br>${modelUsage}</div>
+                    <div><strong>模型備援：</strong>${fallbackText}</div>
+                    <div><strong>今日已跳過模型：</strong><br>${blockedModelText}</div>
+                    <div class="text-muted mt-2">實際官方 quota 仍以 Google AI Studio / Cloud Console 為準；這裡顯示的是系統本機紀錄與估算。</div>
+                </div>
+
+                <div class="d-flex justify-content-between align-items-center row-item">
+                    <span><i class="fas fa-database me-2 text-primary"></i>資料庫大小</span>
+                    <span class="fw-bold">${status.database_size_mb} MB</span>
+                </div>
+            `;
+        }
+
+        function toggleStatusDetail(id) {
+            document.getElementById(id)?.classList.toggle('d-none');
+        }
+
+        function renderAlerts(alerts) {
+            const box = document.getElementById('alertList');
+            const rows = [
+                {
+                    icon: 'fa-triangle-exclamation',
+                    title: '高風險醫院',
+                    value: `${fmt(alerts.risk_hospitals)} 家`,
+                    danger: alerts.has_risk_alert
+                },
+                {
+                    icon: 'fa-comment-slash',
+                    title: '今日新增負評',
+                    value: `${fmt(alerts.today_negative_reviews)} 則`,
+                    danger: alerts.today_negative_reviews > 0
+                },
+                {
+                    icon: 'fa-database',
+                    title: '資料庫備份',
+                    value: alerts.backup_recommended ? '建議備份' : '正常',
+                    danger: alerts.backup_recommended
+                }
+            ];
+
+            box.innerHTML = rows.map(item => `
+                <div class="alert-item ${item.danger ? 'danger' : ''}">
+                    <span><i class="fas ${item.icon} me-2 ${item.danger ? 'text-danger' : 'text-primary'}"></i>${item.title}</span>
+                    <span class="fw-bold ${item.danger ? 'text-danger' : 'text-success'}">${item.value}</span>
+                </div>
+            `).join('');
+        }
+
+        async function loadDashboard() {
+            try {
+                const response = await fetch('/api/dashboard-data');
+                const data = await response.json();
+                if (!response.ok || data.error) throw new Error(data.error || '載入失敗');
+
+                document.getElementById('todayReviews').innerText = fmt(data.today_reviews);
+                document.getElementById('todayHospitals').innerText = fmt(data.today_hospitals);
+                document.getElementById('totalReviews').innerText = fmt(data.total_reviews);
+                document.getElementById('totalHospitals').innerText = fmt(data.total_hospitals);
+                document.getElementById('negativeRate').innerText = `${data.negative_rate}%`;
+                document.getElementById('negativeCount').innerText = fmt(data.negative);
+                document.getElementById('totalUsers').innerText = fmt(data.total_users);
+
+                renderIssues(data.top_issues);
+                renderRiskHospitals(data.risk_hospitals);
+                renderRecentHospitals(data.recent_hospitals);
+                renderAlerts(data.alerts || {});
+                renderSystemStatus(data.system_status || {});
+
+                const ctx = document.getElementById('sentimentChart').getContext('2d');
+                new Chart(ctx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: ['正面評論', '負面評論'],
+                        datasets: [{
+                            data: [data.positive, data.negative],
+                            backgroundColor: ['#198754', '#dc3545'],
+                            borderWidth: 0,
+                            hoverOffset: 5
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        cutout: '62%',
+                        plugins: { legend: { position: 'bottom' } }
+                    }
+                });
+
+                const trendCtx = document.getElementById('trendChart').getContext('2d');
+                new Chart(trendCtx, {
+                    type: 'line',
+                    data: {
+                        labels: (data.review_trend || []).map(item => item.label),
+                        datasets: [
+                            {
+                                label: '總評論',
+                                data: (data.review_trend || []).map(item => item.total),
+                                borderColor: '#0066cc',
+                                backgroundColor: 'rgba(0, 102, 204, 0.08)',
+                                tension: 0.35,
+                                fill: true
+                            },
+                            {
+                                label: '負評',
+                                data: (data.review_trend || []).map(item => item.negative),
+                                borderColor: '#dc3545',
+                                backgroundColor: 'rgba(220, 53, 69, 0.08)',
+                                tension: 0.35,
+                                fill: true
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: { legend: { position: 'bottom' } },
+                        scales: { y: { beginAtZero: true, ticks: { precision: 0 } } }
+                    }
+                });
+            } catch (err) {
+                console.error(err);
+                document.getElementById('issueList').innerHTML = '<div class="text-danger text-center py-5">儀表板資料載入失敗</div>';
+            }
+        }
+
+        loadDashboard();
+    </script>
+</body>
+</html>

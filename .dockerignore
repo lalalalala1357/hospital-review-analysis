@@ -1,0 +1,15 @@
+.git
+.gitignore
+.DS_Store
+__pycache__/
+*.py[cod]
+venv/
+env/
+.env
+.vscode/
+Chrome_Spider_Profile/
+static/uploads/
+.pytest_cache/
+.mypy_cache/
+.cache/
+debug/
